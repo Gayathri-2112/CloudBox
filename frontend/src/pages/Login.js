@@ -10,7 +10,7 @@ function Login(){
 
    try{
 
-     const res = await axios.post("http://localhost:8081/api/auth/login",{
+     const res = await axios.post("http://localhost:8080/api/auth/login",{
        email,
        password
      });
@@ -40,6 +40,9 @@ function Login(){
     <br/>
 
     <button onClick={handleLogin}>Login</button>
+    <div className="link">
+      <a href="/register">Don't have an account? Register</a>
+    </div>
     <div className="link">
       <a href="/reset-password">Forgot Password?</a>
     </div>

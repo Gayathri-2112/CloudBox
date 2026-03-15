@@ -1,53 +1,58 @@
 import { useState } from "react";
 import axios from "axios";
 
-function Register(){
+function Register() {
 
- const [name,setName] = useState("");
- const [email,setEmail] = useState("");
- const [password,setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
- const handleRegister = async () => {
+  const handleRegister = async () => {
 
-   try{
+    try {
 
-     await axios.post("http://localhost:8081/api/auth/register",{
-       name,
-       email,
-       password
-     });
+      await axios.post("http://localhost:8080/api/auth/register", {
+        name,
+        email,
+        password
+      });
 
-     alert("User Registered Successfully");
+      alert("User Registered Successfully");
 
-   }catch(err){
-     alert("Registration Failed");
-   }
+    } catch (err) {
+      console.log(err);
+      alert("Registration Failed");
+    }
 
- }
+  }
 
- return(
+  return (
 
-   <div className="container">
+    <div className="container">
 
-    <h2>User Register</h2>
+      <h2>User Register</h2>
 
-    <input placeholder="Name" onChange={(e)=>setName(e.target.value)} />
+      <input placeholder="Name" onChange={(e) => setName(e.target.value)} />
 
-    <br/>
+      <br />
 
-    <input placeholder="Email" onChange={(e)=>setEmail(e.target.value)} />
+      <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
 
-    <br/>
+      <br />
 
-    <input type="password" placeholder="Password" onChange={(e)=>setPassword(e.target.value)} />
+      <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
 
-    <br/>
+      <br />
 
-    <button onClick={handleRegister}>Register</button>
+      <button onClick={handleRegister}>Register</button>
 
-   </div>
+      <div className="link">
+        <a href="/">Already have an account? Login</a>
+      </div>
 
- )
+    </div>
+
+  )
 
 }
 
