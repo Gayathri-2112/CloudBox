@@ -40,7 +40,9 @@ function Login(){
     <br/>
 
     <button onClick={handleLogin}>Login</button>
-
+    <div className="link">
+      <a href="/reset-password">Forgot Password?</a>
+    </div>
    </div>
 
  )
