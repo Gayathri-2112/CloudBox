@@ -1,0 +1,185 @@
+/* ===== LAYOUT ===== */
+.layout{
+  display:flex;
+  height:100vh;
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar{
+  width:240px;
+  background:linear-gradient(180deg,#0f172a,#1e3a8a);
+  color:white;
+  padding:20px;
+}
+
+.logo{
+  font-size:22px;
+  font-weight:bold;
+  margin-bottom:25px !important;
+  letter-spacing: 0.5px;
+  color:white !important;
+}
+
+
+
+.sidebar ul{
+  list-style:none;
+}
+
+.sidebar li{
+  padding:12px;
+  border-radius:10px;
+  margin-bottom:8px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.sidebar li:hover{
+  background:rgba(255,255,255,0.1);
+}
+
+.sidebar li.active{
+  background:rgba(255,255,255,0.2);
+  border-left:4px solid #38bdf8;
+}
+
+/* ===== MAIN ===== */
+.main{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
+
+/* ===== HEADER ===== */
+.header{
+  height:70px;
+  display:flex;
+  align-items:center;
+  padding:0 20px;
+  background:white;
+  border-bottom:1px solid #eee;
+}
+
+/* LEFT */
+.header-left{
+  width:200px;
+}
+
+.header-left h3{
+  font-size:20px;
+  font-weight:600;
+}
+
+/* CENTER */
+.header-center{
+  flex:1;
+  display:flex;
+  justify-content:center;
+}
+
+.header-search-box{
+  display:flex;
+  align-items:center;
+  width:420px;
+  padding:10px 14px;
+  border-radius:14px;
+  border:2px solid #e0e7ff;
+  background:#ffffff;
+  box-shadow:0 4px 12px rgba(37,99,235,0.12);
+  gap:10px;
+  transition:all 0.25s ease;
+}
+
+.header-search-box i{
+  color:#6b7280;
+  font-size:14px;
+}
+
+.header-search-box input{
+  border:none;
+  outline:none;
+  width:100%;
+  font-size:14px;
+  background:transparent;
+}
+
+.header-search-box:focus-within{
+  border-color:#2563eb;
+  box-shadow:0 6px 18px rgba(37,99,235,0.25);
+}
+
+
+/* RIGHT */
+.header-right{
+  width:200px;
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:12px;
+}
+
+/* ICON BUTTONS */
+.icon-btn{
+  width:38px;
+  height:38px;
+  border-radius:10px;
+  background:#f1f5f9;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+
+/* ICON SIZE */
+.icon-btn svg{
+  font-size:18px;
+}
+
+/* LOGOUT BUTTON */
+.logout-btn{
+  padding:6px 14px;
+  border-radius:8px;
+  border:none;
+  background:#ef4444;
+  color:white;
+  cursor:pointer;
+  font-weight:500;
+}
+
+/* ===== CONTENT ===== */
+.content{
+  padding:25px;
+  overflow-y:auto;
+}
+
+/* FORCE logout button text to appear */
+.logout-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: none;
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  font-size: 14px !important;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+
+/* 🔥 FORCE FIX HEADER OVERLAP */
+.header-right * {
+  position: static !important;
+  z-index: auto !important;
+}
+
+.logout-btn {
+  display: inline-block !important;
+  margin-left: 10px;
+}
+
+.icon-btn {
+  display: inline-flex !important;
+}
