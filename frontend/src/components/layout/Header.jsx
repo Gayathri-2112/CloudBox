@@ -4,6 +4,7 @@ import "./layout.css";
 
 function Header({ type }) {
   const navigate = useNavigate();
+  const role = localStorage.getItem("role");
 
   const handleLogout = () => {
     localStorage.clear();
@@ -25,7 +26,7 @@ function Header({ type }) {
       <div className="header-right">
 
         <div className="icon-btn">
-          <FaBell />
+          <FaBell onClick={() => navigate(role === "ADMIN" ? "/admin/notifications" : "/notifications")} />
         </div>
 
         <div className="icon-btn">

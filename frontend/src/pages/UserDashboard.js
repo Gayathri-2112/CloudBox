@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import API from "../api/axiosConfig";
 
 import Layout from "../components/layout/Layout";
 import "../components/layout/layout.css";
@@ -16,10 +17,12 @@ function UserDashboard() {
 
   const [files, setFiles] = useState([]);
   const [totalSize, setTotalSize] = useState(0);
+  const [notifications, setNotifications] = useState([]);
 
   // 📡 FETCH FILES
   useEffect(() => {
     fetchFiles();
+    fetchNotifications();
   }, []);
 
   const fetchFiles = async () => {
@@ -40,6 +43,15 @@ function UserDashboard() {
 
     } catch (err) {
       console.error("Error fetching files", err);
+    }
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await API.get("/user/notifications");
+      setNotifications(res.data.slice(0, 3));
+    } catch (err) {
+      console.error("Error fetching notifications", err);
     }
   };
 
@@ -142,9 +154,20 @@ function UserDashboard() {
 
             <div className="card" style={{ marginTop: "20px" }}>
               <div className="card-title">Notifications</div>
-              <p>
-                <i className="fa-solid fa-bell user-icon-bell"></i> No new notifications
-              </p>
+              {notifications.length > 0 ? (
+                notifications.map((notification) => (
+                  <div key={notification.id} className="list-item">
+                    <div>
+                      <strong>{notification.title}</strong>
+                      <p style={{ margin: "6px 0 0" }}>{notification.message}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p>
+                  <i className="fa-solid fa-bell user-icon-bell"></i> No new notifications
+                </p>
+              )}
             </div>
 
           </div>

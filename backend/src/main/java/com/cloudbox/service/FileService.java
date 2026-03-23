@@ -1,6 +1,8 @@
 package com.cloudbox.service;
 
 import com.cloudbox.model.FileEntity;
+import com.cloudbox.model.AdminSetting;
+import com.cloudbox.repository.AdminSettingRepository;
 import com.cloudbox.repository.FileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,18 @@ public class FileService {
     @Autowired
     private FileRepository fileRepository;
 
+    @Autowired
+    private AdminSettingRepository adminSettingRepository;
+
+    @Autowired
+    private SystemEventService systemEventService;
+
+    @Autowired
+    private FileShareService fileShareService;
+
+    @Autowired
+    private FolderService folderService;
+
     // =========================
     // 📤 UPLOAD FILE
     // =========================
@@ -32,6 +46,17 @@ public class FileService {
 
         if (folder == null || folder.isEmpty()) {
             folder = "root";
+        }
+
+        folderService.ensureFolderExists(userEmail, folder);
+
+        AdminSetting settings = adminSettingRepository.findById(1L).orElse(null);
+        if (settings != null && settings.getStorageLimit() != null && settings.getStorageLimit() > 0) {
+            long maxBytes = settings.getStorageLimit() * 1024 * 1024;
+            long currentUsage = getUserStorage(userEmail);
+            if (currentUsage + file.getSize() > maxBytes) {
+                throw new RuntimeException("Storage limit exceeded for this user");
+            }
         }
 
         File directory = new File(uploadDir + userEmail + "/" + folder);
@@ -54,7 +79,11 @@ public class FileService {
         entity.setFolder(folder);
         entity.setUploadedAt(LocalDateTime.now());
 
-        return fileRepository.save(entity);
+        FileEntity savedFile = fileRepository.save(entity);
+        systemEventService.log(userEmail, "UPLOAD_FILE", "Uploaded " + savedFile.getFileName() + " to folder " + folder);
+        systemEventService.notifyAdmins("File Uploaded", userEmail + " uploaded " + savedFile.getFileName());
+
+        return savedFile;
     }
 
     // =========================
@@ -65,8 +94,23 @@ public class FileService {
         FileEntity file = fileRepository.findById(fileId)
                 .orElseThrow(() -> new RuntimeException("File not found"));
 
-        if (!file.getOwnerEmail().equals(userEmail)) {
+        boolean isOwner = file.getOwnerEmail().equals(userEmail);
+        boolean hasShareAccess = fileShareService.canDownloadFile(fileId, userEmail);
+
+        if (!isOwner && !hasShareAccess) {
             throw new RuntimeException("Unauthorized");
+        }
+
+        if (isOwner) {
+            systemEventService.log(userEmail, "DOWNLOAD_FILE", "Downloaded own file " + file.getFileName());
+        } else {
+            systemEventService.log(userEmail, "DOWNLOAD_SHARED_FILE",
+                    "Downloaded shared file " + file.getFileName() + " from " + file.getOwnerEmail());
+            systemEventService.notifyUser(
+                    file.getOwnerEmail(),
+                    "Shared File Downloaded",
+                    userEmail + " downloaded your shared file " + file.getFileName()
+            );
         }
 
         return Files.readAllBytes(Paths.get(file.getFilePath()));
@@ -84,8 +128,10 @@ public class FileService {
             throw new RuntimeException("Unauthorized");
         }
 
+        fileShareService.deleteSharesForFile(fileId);
         Files.deleteIfExists(Paths.get(file.getFilePath()));
         fileRepository.delete(file);
+        systemEventService.log(userEmail, "DELETE_FILE", "Deleted file " + file.getFileName());
     }
 
     // =========================
@@ -128,5 +174,27 @@ public class FileService {
                 .stream()
                 .mapToLong(FileEntity::getFileSize)
                 .sum();
+    }
+
+    public List<FileEntity> getAllFiles() {
+        return fileRepository.findAll()
+                .stream()
+                .sorted((a, b) -> b.getUploadedAt().compareTo(a.getUploadedAt()))
+                .toList();
+    }
+
+    public void deleteFileAsAdmin(Long fileId, String adminEmail) throws IOException {
+
+        FileEntity file = fileRepository.findById(fileId)
+                .orElseThrow(() -> new RuntimeException("File not found"));
+
+        fileShareService.deleteSharesForFile(fileId);
+        Files.deleteIfExists(Paths.get(file.getFilePath()));
+        fileRepository.delete(file);
+
+        systemEventService.log(adminEmail, "ADMIN_DELETE_FILE",
+                "Admin deleted " + file.getFileName() + " owned by " + file.getOwnerEmail());
+        systemEventService.notifyAdmins("File Deleted by Admin",
+                adminEmail + " deleted " + file.getFileName() + " owned by " + file.getOwnerEmail());
     }
 }

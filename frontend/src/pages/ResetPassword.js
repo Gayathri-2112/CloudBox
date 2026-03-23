@@ -30,7 +30,7 @@ function ResetPassword() {
       navigate("/login");
 
     } catch (err) {
-      alert("Reset failed ❌");
+      alert(err.response?.data || "Reset failed");
     } finally {
       setLoading(false);
     }

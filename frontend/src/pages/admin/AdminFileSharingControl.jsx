@@ -26,7 +26,7 @@ function AdminFileSharingControl() {
       await API.delete(`/admin/share/${id}`);
       fetchShares();
     } catch (err) {
-      alert("Failed");
+      alert(err.response?.data || "Failed");
     }
   };
 
@@ -49,23 +49,29 @@ function AdminFileSharingControl() {
             </thead>
 
             <tbody>
-              {shares.map(s => (
-                <tr key={s.id}>
-                  <td>{s.fileName}</td>
-                  <td>{s.ownerEmail}</td>
-                  <td>{s.sharedWith}</td>
-                  <td>{s.permission}</td>
+              {shares.length > 0 ? (
+                shares.map(s => (
+                  <tr key={s.id}>
+                    <td>{s.fileName}</td>
+                    <td>{s.ownerEmail}</td>
+                    <td>{s.sharedWith}</td>
+                    <td>{s.permission}</td>
 
-                  <td>
-                    <button
-                      className="btn btn-danger"
-                      onClick={() => revokeAccess(s.id)}
-                    >
-                      Revoke
-                    </button>
-                  </td>
+                    <td>
+                      <button
+                        className="btn btn-danger"
+                        onClick={() => revokeAccess(s.id)}
+                      >
+                        Revoke
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5">No sharing records found</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

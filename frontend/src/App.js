@@ -12,6 +12,7 @@ import MyFiles from "./pages/MyFiles";
 import Upload from "./pages/Upload";
 import Folders from "./pages/Folders";
 import Profile from "./pages/Profile";
+import Notifications from "./pages/Notifications";
 
 // ✅ User Sidebar pages
 import SharedWithMe from "./pages/SharedWithMe";
@@ -69,6 +70,15 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["USER", "ADMIN"]}>
               <Upload />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute allowedRoles={["USER", "ADMIN"]}>
+              <Notifications />
             </ProtectedRoute>
           }
         />

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import API from "../api/axiosConfig";
 
 import Layout from "../components/layout/Layout";
@@ -9,17 +9,33 @@ import "../components/common/card.css";
 function Upload() {
 
   const [file, setFile] = useState(null);
+  const [folders, setFolders] = useState(["root"]);
+  const [selectedFolder, setSelectedFolder] = useState("root");
+
+  useEffect(() => {
+    fetchFolders();
+  }, []);
+
+  const fetchFolders = async () => {
+    try {
+      const res = await API.get("/files/folders");
+      setFolders(res.data);
+    } catch (err) {
+      alert("Failed to load folders");
+    }
+  };
 
   const handleUpload = async () => {
     if (!file) return alert("Select a file");
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("folder", "root");
+    formData.append("folder", selectedFolder);
 
     await API.post("/files/upload", formData);
 
     alert("Uploaded successfully!");
+    setFile(null);
   };
 
   return (
@@ -47,6 +63,26 @@ function Upload() {
               </p>
 
             </label>
+
+            <select
+              value={selectedFolder}
+              onChange={(e) => setSelectedFolder(e.target.value)}
+              style={{
+                width: "100%",
+                marginTop: "16px",
+                marginBottom: "16px",
+                padding: "12px 14px",
+                borderRadius: "8px",
+                border: "1px solid #d1d5db",
+                background: "#fafafa"
+              }}
+            >
+              {folders.map((folder) => (
+                <option key={folder} value={folder}>
+                  {folder}
+                </option>
+              ))}
+            </select>
 
             <button
               className="btn btn-primary btn-full upload-btn"

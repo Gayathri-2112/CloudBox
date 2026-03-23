@@ -14,6 +14,7 @@ function Sidebar({ type }) {
     { name: "Dashboard", path: "/dashboard", icon: <FaHome /> },
     { name: "My Files", path: "/files", icon: <FaFolder /> },
     { name: "Upload File", path: "/upload", icon: <FaUpload /> },
+    { name: "Notifications", path: "/notifications", icon: <FaBell /> },
     { name: "Shared With Me", path: "/shared-with", icon: <FaShareAlt /> },
     { name: "Shared By Me", path: "/shared-by", icon: <FaShareAlt /> },
     { name: "My Folders", path: "/folders", icon: <FaFolder /> },
