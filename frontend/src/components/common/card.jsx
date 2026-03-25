@@ -9,4 +9,4 @@ function Card({ title, value }) {
   );
 }
 
-export default Card;
+export default  Card;
