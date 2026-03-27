@@ -118,15 +118,6 @@ function AdminDashboard() {
 
   </div>
 
-      {/* SEARCH */}
-      <div className="admin-search-box">
-        <input
-          placeholder="Search by email..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
-
       {/* RECENT FILES */}
       <div className="card">
         <div className="card-title">Recent Files</div>
@@ -140,6 +131,15 @@ function AdminDashboard() {
         ) : (
           <p>No recent files</p>
         )}
+      </div>
+
+      {/* SEARCH */}
+      <div className="admin-search-box">
+        <input
+          placeholder="Search by email..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
       {/* USERS */}

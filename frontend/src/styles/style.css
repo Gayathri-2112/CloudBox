@@ -737,3 +737,58 @@ tr:hover td {
   border: 1px solid #cccccc;
   padding: 6px;
 }
+
+/* USER DASHBOARD COLORS */
+
+.stat-yellow {
+  background: linear-gradient(135deg, #facc15, #eab308);
+  color: #000;
+}
+
+.stat-blue {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: #fff;
+}
+
+.stat-green {
+  background: linear-gradient(135deg, #22c55e, #15803d);
+  color: #fff;
+}
+
+/* ADMIN DASHBOARD COLORS */
+
+.stat-admin-orange {
+  background: linear-gradient(135deg, #fb923c, #ea580c);
+  color: #fff;
+}
+
+.stat-admin-blue {
+  background: linear-gradient(135deg, #60a5fa, #2563eb);
+  color: #fff;
+}
+
+.stat-admin-green {
+  background: linear-gradient(135deg, #34d399, #059669);
+  color: #fff;
+}
+
+.stat-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+.stat-icon {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.stat-card h2,
+.stat-card h4 {
+  color: inherit; /* inherit white/black automatically */
+}
+
+
