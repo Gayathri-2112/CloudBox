@@ -152,7 +152,7 @@ public class FileShareService {
     
     public boolean canViewFile(Long fileId, String userEmail) {
     return fileShareRepository
-            .findByFileIdAndSharedWithEmail(fileId, userEmail)
+            .findByFileIdAndSharedWith(fileId, userEmail)
             .map(share ->
                     share.getPermission().equals("VIEW") ||
                     share.getPermission().equals("DOWNLOAD")
@@ -195,6 +195,14 @@ public class FileShareService {
         dto.setSharedWith(share.getSharedWith());
         dto.setPermission(share.getPermission());
         dto.setCreatedAt(share.getCreatedAt());
+        dto.setCanView(
+    "VIEW".equalsIgnoreCase(share.getPermission()) ||
+    "DOWNLOAD".equalsIgnoreCase(share.getPermission())
+);
+
+        dto.setCanDownload(
+    "DOWNLOAD".equalsIgnoreCase(share.getPermission())
+);
         return dto;
     }
 }

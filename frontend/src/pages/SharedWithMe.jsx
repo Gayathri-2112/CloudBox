@@ -112,7 +112,7 @@ function SharedWithMe() {
 
                 <button
                   className="btn btn-success"
-                  disabled={share.permission !== "DOWNLOAD"}
+                  disabled={!share.canDownload}
                   onClick={() =>
                     downloadFile(share.fileId, share.fileName)
                   }
