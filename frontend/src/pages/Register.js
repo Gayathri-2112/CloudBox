@@ -2,7 +2,7 @@ import { useState } from "react";
 import { registerUser } from "../services/authService";
 import { useNavigate } from "react-router-dom";
 import "../styles/style.css";
-
+import ParticlesBackground from "../components/ParticlesBackground";
 function Register() {
   const navigate = useNavigate();
 
@@ -64,9 +64,19 @@ function Register() {
     }
   };
 
-  return (
+ return (
+  <>
+   <div className="auth-bg">
+      <div className="blob blob1"></div>
+      <div className="blob blob2"></div>
+      <div className="blob blob3"></div>
+      <ParticlesBackground />
+    </div>
+
     <div className="auth-wrapper">
+
       <div className="auth-container">
+
         <h2>Create Account</h2>
 
         <input
@@ -87,14 +97,6 @@ function Register() {
           name="gender"
           value={formData.gender}
           onChange={handleChange}
-          style={{
-            width: "100%",
-            padding: "12px 14px",
-            marginBottom: "18px",
-            borderRadius: "8px",
-            border: "1px solid #d1d5db",
-            background: "#fafafa"
-          }}
         >
           <option value="">Select Gender</option>
           <option value="MALE">Male</option>
@@ -103,11 +105,11 @@ function Register() {
         </select>
 
         <input
-        type="number"
-        name="age"
-        placeholder="Age"
-        value={formData.age || ""}
-        onChange={handleChange}
+          type="number"
+          name="age"
+          placeholder="Age"
+          value={formData.age || ""}
+          onChange={handleChange}
         />
 
         <input
@@ -141,15 +143,22 @@ function Register() {
           onChange={handleChange}
         />
 
-        <button className="btn btn-primary btn-full" onClick={handleRegister} disabled={loading}>
+        <button
+          className="btn btn-primary btn-full"
+          onClick={handleRegister}
+          disabled={loading}
+        >
           {loading ? "Creating account..." : "Register"}
         </button>
 
         <div className="divider"></div>
 
         <a href="/login">Already have an account? Login</a>
+
       </div>
+
     </div>
+  </>
   );
 }
 

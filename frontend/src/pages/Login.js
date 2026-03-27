@@ -2,7 +2,7 @@ import { useState } from "react";
 import { loginUser } from "../services/authService";
 import { useNavigate, Link } from "react-router-dom";
 import "../styles/style.css";
-
+import ParticlesBackground from "../components/ParticlesBackground";
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,45 +36,55 @@ function Login() {
     }
   };
 
-  return (
-    <div className="auth-wrapper">
-      <div className="auth-container">
-        <h2>Login to CloudBox</h2>
+ return (
+<>
+  
+  <div className="auth-bg">
+    <div className="blob blob1"></div>
+    <div className="blob blob2"></div>
+    <div className="blob blob3"></div>
+    <ParticlesBackground />
+  </div>
 
-        {/* Email */}
-        <input
-          type="email"
-          placeholder="Email address"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+  <div className="auth-wrapper">
 
-        {/* Password */}
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+    <div className="auth-container">
 
-        {/* Button */}
-        <button
-          className="btn btn-primary btn-full"
-          onClick={handleLogin}
-          disabled={loading}
-        >
-          {loading ? "Logging in..." : "Login"}
-        </button>
+      <h2>Login to CloudBox</h2>
 
-        {/* Links */}
-        <Link to="/reset-password">Forgot Password?</Link>
+      <input
+        type="email"
+        placeholder="Email address"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
 
-        <div className="divider"></div>
+      <input
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
 
-        <Link to="/register">Create an account</Link>
-      </div>
+      <button
+        className="btn btn-primary btn-full"
+        onClick={handleLogin}
+        disabled={loading}
+      >
+        {loading ? "Logging in..." : "Login"}
+      </button>
+
+      <Link to="/reset-password">Forgot Password?</Link>
+
+      <div className="divider"></div>
+
+      <Link to="/register">Create an account</Link>
+
     </div>
-  );
+
+  </div>
+</>
+);
 }
 
 export default Login;

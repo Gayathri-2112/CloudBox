@@ -9,17 +9,24 @@ import com.cloudbox.dto.CollaborationCommentDTO;
 import com.cloudbox.dto.CollaborationCommentRequest;
 import com.cloudbox.dto.CollaborationFileDTO;
 import com.cloudbox.model.FileEntity;
+import com.cloudbox.repository.FileRepository;
 import com.cloudbox.service.CollaborationService;
 import com.cloudbox.service.FolderService;
 import com.cloudbox.service.FileShareService;
 import com.cloudbox.service.FileService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 @RestController
@@ -37,6 +44,9 @@ public class FileController {
 
     @Autowired
     private CollaborationService collaborationService;
+
+    @Autowired
+    private FileRepository fileRepository;
 
     @PostMapping("/upload")
     public ResponseEntity<FileEntity> upload(
@@ -152,5 +162,19 @@ public class FileController {
             Authentication auth
     ) {
         return ResponseEntity.ok(collaborationService.addComment(request, auth.getName()));
+    }
+    @GetMapping("/preview/{id}")
+    public ResponseEntity<Resource> previewFile(@PathVariable Long id) throws Exception {
+
+        FileEntity file = fileRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("File not found"));
+
+        Path path = Paths.get(file.getFilePath());
+
+        Resource resource = new UrlResource(path.toUri());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=" + file.getFileName())
+                .body(resource);
     }
 }

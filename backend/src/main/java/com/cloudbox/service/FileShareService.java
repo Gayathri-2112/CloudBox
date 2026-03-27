@@ -55,6 +55,11 @@ public class FileShareService {
         User recipient = userRepository.findByEmail(request.getSharedWith().trim())
                 .orElseThrow(() -> new RuntimeException("Recipient user not found"));
 
+        // 🚫 Prevent sharing files with admin
+        if (recipient.getRole().name().equals("ADMIN")) {
+            throw new RuntimeException("Files cannot be shared with admin");
+        }
+
         if (recipient.getEmail().equals(ownerEmail)) {
             throw new RuntimeException("You cannot share a file with yourself");
         }

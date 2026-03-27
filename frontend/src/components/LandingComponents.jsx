@@ -8,7 +8,7 @@ export function Navbar() {
 
       <nav className="navbar">
 
-        <h2 className="logo">CloudBox</h2>
+        <h2 className="landing-logo">CloudBox</h2>
 
         <div className="nav-buttons">
 

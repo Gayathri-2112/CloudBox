@@ -3,11 +3,7 @@ package com.cloudbox.service;
 import com.cloudbox.dto.AdminFileDTO;
 import com.cloudbox.dto.AdminSettingsRequest;
 import com.cloudbox.dto.FileShareDTO;
-import com.cloudbox.model.AdminNotification;
-import com.cloudbox.model.AdminSetting;
-import com.cloudbox.model.FileEntity;
-import com.cloudbox.model.SystemLog;
-import com.cloudbox.model.User;
+import com.cloudbox.model.*;
 import com.cloudbox.repository.AdminNotificationRepository;
 import com.cloudbox.repository.AdminSettingRepository;
 import com.cloudbox.repository.FileRepository;
@@ -53,7 +49,7 @@ public class AdminService {
 
     // ✅ Get all users
     public List<User> getAllUsers() {
-        return userRepository.findAll();
+        return userRepository.findByRole(Role.USER);
     }
 
     // ✅ Suspend user

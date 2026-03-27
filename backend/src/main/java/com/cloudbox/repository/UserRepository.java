@@ -2,7 +2,7 @@ package com.cloudbox.repository;
 
 import com.cloudbox.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
-
+import com.cloudbox.model.Role;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,4 +22,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // 🔴 Suspended users
     List<User> findBySuspendedTrue();
+
+    List<User> findByRole(Role role);
 }

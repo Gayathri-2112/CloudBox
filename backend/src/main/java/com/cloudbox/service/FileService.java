@@ -2,12 +2,16 @@ package com.cloudbox.service;
 
 import com.cloudbox.model.FileEntity;
 import com.cloudbox.model.AdminSetting;
+import com.cloudbox.model.Role;
+import com.cloudbox.model.User;
+import com.cloudbox.repository.UserRepository;
 import com.cloudbox.repository.AdminSettingRepository;
+import com.cloudbox.repository.CollaborationCommentRepository;
 import com.cloudbox.repository.FileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
+import org.springframework.transaction.annotation.Transactional;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
@@ -22,6 +26,12 @@ public class FileService {
 
     @Autowired
     private FileRepository fileRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private CollaborationCommentRepository collaborationCommentRepository;
 
     @Autowired
     private AdminSettingRepository adminSettingRepository;
@@ -119,16 +129,21 @@ public class FileService {
     // =========================
     // ❌ DELETE FILE
     // =========================
+    @Transactional
     public void deleteFile(Long fileId, String userEmail) throws IOException {
 
         FileEntity file = fileRepository.findById(fileId)
                 .orElseThrow(() -> new RuntimeException("File not found"));
 
-        if (!file.getOwnerEmail().equals(userEmail)) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!file.getOwnerEmail().equals(userEmail) && user.getRole() != Role.ADMIN) {
             throw new RuntimeException("Unauthorized");
         }
 
         fileShareService.deleteSharesForFile(fileId);
+        collaborationCommentRepository.deleteByFileId(fileId);
         Files.deleteIfExists(Paths.get(file.getFilePath()));
         fileRepository.delete(file);
         systemEventService.log(userEmail, "DELETE_FILE", "Deleted file " + file.getFileName());
@@ -183,12 +198,14 @@ public class FileService {
                 .toList();
     }
 
+    @Transactional
     public void deleteFileAsAdmin(Long fileId, String adminEmail) throws IOException {
 
         FileEntity file = fileRepository.findById(fileId)
                 .orElseThrow(() -> new RuntimeException("File not found"));
 
         fileShareService.deleteSharesForFile(fileId);
+        collaborationCommentRepository.deleteByFileId(fileId);
         Files.deleteIfExists(Paths.get(file.getFilePath()));
         fileRepository.delete(file);
 

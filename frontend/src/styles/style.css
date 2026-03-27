@@ -5,10 +5,16 @@
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: #f5f7fa;
+body{
+  margin:0;
+  font-family: Inter, sans-serif;
+  background: #0f172a;
+}
+
+@keyframes gradientFlow{
+  0%{background-position:0% 50%;}
+  50%{background-position:100% 50%;}
+  100%{background-position:0% 50%;}
 }
 
 /* =========================
@@ -20,6 +26,8 @@ body {
   justify-content: center;
   align-items: center;
   padding: 20px;
+  position: relative;
+  z-index: 10;
 }
 
 /* =========================
@@ -29,9 +37,13 @@ body {
   width: 100%;
   max-width: 380px;
   background: #ffffff;
+  position:relative;
+  z-index: 5;
   padding: 32px;
   border-radius: 12px;
   border: 1px solid #e5e7eb;
+  backdrop-filter: blur(10px);
+  background: rgba(255,255,255,0.85);
   box-shadow:
     0 10px 25px rgba(0, 0, 0, 0.08),
     0 2px 6px rgba(0, 0, 0, 0.05);
@@ -538,4 +550,170 @@ tr:hover {
   padding: 10px 18px;
   border-radius: 8px;
   font-weight: 600;
+}
+
+.preview-modal{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.75);
+display:flex;
+justify-content:center;
+align-items:center;
+z-index:2000;
+}
+
+.preview-content{
+background:white;
+padding:20px;
+border-radius:12px;
+width:80%;
+max-height:90%;
+overflow:auto;
+box-shadow:0 15px 40px rgba(0,0,0,0.35);
+}
+
+#docx-preview {
+  font-family: "Times New Roman", serif;
+  line-height: 1.6;
+  color: #111827;
+}
+
+#docx-preview table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+#docx-preview td,
+#docx-preview th {
+  border: 1px solid #ccc;
+  padding: 6px;
+}
+
+/* Animated background */
+.auth-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100%vh;
+  z-index: 0;
+  overflow: hidden;
+  background: linear-gradient(135deg,#eef2ff,#f0fdf4);
+}
+
+/* animated blobs */
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.6;
+  animation: float 12s infinite ease-in-out alternate;
+}
+
+.blob1{
+  width:300px;
+  height:300px;
+  background:#4f46e5;
+  top:10%;
+  left:10%;
+}
+
+.blob2{
+  width:350px;
+  height:350px;
+  background:#22c55e;
+  bottom:10%;
+  right:10%;
+}
+
+.blob3{
+  width:250px;
+  height:250px;
+  background:#06b6d4;
+  top:50%;
+  left:40%;
+}
+
+@keyframes float{
+  0%{
+    transform: translate(0px,0px) scale(1);
+  }
+  25%{
+    transform: translate(40px,-60px) scale(1.1);
+  }
+  50%{
+    transform: translate(-60px,40px) scale(0.9);
+  }
+  75%{
+    transform: translate(30px,60px) scale(1.05);
+  }
+  100%{
+    transform: translate(0px,0px) scale(1);
+  }
+}
+
+@keyframes gradientMove{
+  0%{background-position:0% 50%;}
+  50%{background-position:100% 50%;}
+  100%{background-position:0% 50%;}
+}
+
+/* =========================
+   Animated Auth Background
+========================= */
+
+.auth-bg{
+  position: fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  z-index:-1;
+  background: linear-gradient(135deg,#eef2ff,#f0fdf4);
+}
+
+/* floating blobs */
+.blob{
+  position:absolute;
+  border-radius:50%;
+  filter:blur(70px);
+  opacity:0.6;
+  animation: float 18s infinite ease-in-out;
+}
+
+.blob1{
+  width:320px;
+  height:320px;
+  background:#6366f1;
+  top:10%;
+  left:10%;
+}
+
+.blob2{
+  width:380px;
+  height:380px;
+  background:#22c55e;
+  bottom:10%;
+  right:10%;
+}
+
+.blob3{
+  width:260px;
+  height:260px;
+  background:#06b6d4;
+  top:50%;
+  left:40%;
+}
+
+@keyframes float{
+  from{
+    transform: translateY(0px);
+  }
+  to{
+    transform: translateY(-50px);
+  }
 }

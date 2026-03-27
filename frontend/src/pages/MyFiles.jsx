@@ -9,6 +9,7 @@ import "../components/common/card.css";
 function MyFiles() {
 
   const [files, setFiles] = useState([]);
+  const [previewFile, setPreviewFile] = useState(null);
   const [shareEmail, setShareEmail] = useState({});
   const [sharePermission, setSharePermission] = useState({});
   const [folders, setFolders] = useState(["root"]);
@@ -30,8 +31,12 @@ function MyFiles() {
   }, []);
 
   const deleteFile = async (id) => {
-    await API.delete(`/files/${id}`);
-    fetchFiles();
+    try {
+      await API.delete(`/files/${id}`);
+      fetchFiles();
+    } catch (err) {
+      alert(err.response?.data || "Delete failed");
+    }
   };
 
   const downloadFile = async (id, name) => {
@@ -167,6 +172,12 @@ function MyFiles() {
               </div>
 
               <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => setPreviewFile(file)}
+                >
+                  Preview
+                </button>
 
                 <button className="btn btn-success"
                   onClick={() => downloadFile(file.id, file.fileName)}>
@@ -185,6 +196,47 @@ function MyFiles() {
           {files.length === 0 && <p>No files uploaded yet</p>}
 
         </div>
+        {previewFile && (
+
+          <div style={{
+            marginTop: "30px",
+            background: "#fff",
+            padding: "20px",
+            borderRadius: "10px"
+          }}>
+
+            <h3>File Preview</h3>
+
+            {(() => {
+
+              const fileUrl = `https://your-ngrok-url/api/files/preview/${previewFile.id}`;
+              const ext = previewFile.fileName.split(".").pop().toLowerCase();
+
+              if (["png","jpg","jpeg","gif","webp"].includes(ext)) {
+                return <img src={fileUrl} style={{maxWidth:"100%"}} />;
+              }
+
+              if (ext === "pdf") {
+                return <iframe src={fileUrl} width="100%" height="500px" />;
+              }
+
+              if (["doc","docx","ppt","pptx","xls","xlsx"].includes(ext)) {
+                return (
+                  <iframe
+                    src={`https://view.officeapps.live.com/op/embed.aspx?src=${fileUrl}`}
+                    width="100%"
+                    height="500px"
+                    style={{border:"none"}}
+                  />
+                );
+              }
+
+              return <p>No preview available</p>;
+
+            })()}
+
+          </div>
+        )}
       </div>
     </Layout>
   );

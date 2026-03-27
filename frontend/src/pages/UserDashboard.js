@@ -95,7 +95,7 @@ function UserDashboard() {
               {/* STATS */}
               <div className="stats-row">
 
-                <div className="stat-card stat-green">
+                <div className="stat-card stat-yellow">
                   <div className="stat-icon user-icon-files">
                     <i className="fa-solid fa-folder"></i>
                   </div>
