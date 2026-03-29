@@ -32,6 +32,9 @@ import CollaborationActivity from "./pages/admin/CollaborationActivity";
 import AdminNotifications from "./pages/admin/AdminNotifications";
 import AdminSettings from "./pages/admin/AdminSettings";
 
+// 🔥 Testing
+import Kanban from "./pages/Kanban";
+
 import ProtectedRoute from "./auth/ProtectedRoute";
 import { SearchProvider } from "./context/SearchContext";
 
@@ -243,8 +246,16 @@ function App() {
           }
         />
 
+
+        {/* ================= TESTING ================= */}
+        <Route path="/kanban" element={<Kanban />} />
+
+
+
         {/* ================= FALLBACK ================= */}
         <Route path="*" element={<h1>Page Not Found</h1>} />
+
+
 
       </Routes>
     </BrowserRouter>
