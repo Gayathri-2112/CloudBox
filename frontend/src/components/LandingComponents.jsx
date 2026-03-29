@@ -119,7 +119,7 @@ export function HowItWorks() {
   return (
     <section className="how" id="how">
       <div className="section-label">How It Works</div>
-      <h2 className="section-title">Up and running in minutes</h2>
+      <h2 className="section-title">Up and running in seconds</h2>
       <p className="section-sub">No complicated setup. Sign up and start storing immediately.</p>
       <div className="steps">
         <div className="step">
@@ -230,8 +230,8 @@ export function Testimonials() {
 /* PRICING */
 const plans = [
   {
-    name: "Free", storage: "5 GB", sub: "Forever free",
-    features: ["5 GB storage", "Up to 3 users", "Basic file sharing", "Email support"],
+    name: "Free", storage: "15 GB", sub: "Forever free",
+    features: ["15 GB storage", "Up to 3 users", "Basic file sharing", "Email support"],
     cta: "Get started", link: true,
   },
   {

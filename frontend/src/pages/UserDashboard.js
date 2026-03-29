@@ -1,232 +1,188 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import API from "../api/axiosConfig";
-import { useNavigate } from "react-router-dom"; // ✅ ADDED
-
+import { useNavigate } from "react-router-dom";
 import Layout from "../components/layout/Layout";
-import "../components/layout/layout.css";
-import "../components/common/card.css";
+import "../styles/style.css";
+import "../styles/UserDashboard.css";
 
-function UserDashboard() {
+function getFileIcon(fileName = "") {
+  const n = fileName.toLowerCase();
+  if (/\.(jpg|jpeg|png|gif|webp|svg)$/.test(n)) return { icon: "fa-image",      color: "#8b5cf6" };
+  if (/\.(mp4|mkv|avi|mov|webm)$/.test(n))      return { icon: "fa-film",       color: "#f59e0b" };
+  if (/\.(mp3|wav|ogg|flac)$/.test(n))           return { icon: "fa-music",      color: "#10b981" };
+  if (/\.(pdf)$/.test(n))                        return { icon: "fa-file-pdf",   color: "#ef4444" };
+  if (/\.(doc|docx)$/.test(n))                   return { icon: "fa-file-word",  color: "#2563eb" };
+  if (/\.(xls|xlsx)$/.test(n))                   return { icon: "fa-file-excel", color: "#16a34a" };
+  return { icon: "fa-file-lines", color: "#64748b" };
+}
 
-  const navigate = useNavigate(); // ✅ ADDED
+function formatSize(bytes) {
+  if (!bytes || bytes === 0) return "0 B";
+  const k = 1024, sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return (bytes / Math.pow(k, i)).toFixed(1) + " " + sizes[i];
+}
 
-  const rawName = localStorage.getItem("name");
-  const token = localStorage.getItem("token");
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1)  return "Just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
 
-  const name = rawName
-    ? rawName.charAt(0).toUpperCase() + rawName.slice(1)
-    : "User";
+export default function UserDashboard() {
+  const navigate = useNavigate();
+  const rawName  = localStorage.getItem("name") || "User";
+  const name     = rawName.charAt(0).toUpperCase() + rawName.slice(1);
 
-  const [files, setFiles] = useState([]);
-  const [totalSize, setTotalSize] = useState(0);
-  const [storageLimit, setStorageLimit] = useState(15360); // MB
+  const [files,         setFiles]         = useState([]);
+  const [totalSize,     setTotalSize]     = useState(0);
+  const [storageLimit,  setStorageLimit]  = useState(15360);
   const [notifications, setNotifications] = useState([]);
 
-  // 📡 FETCH FILES
   useEffect(() => {
-    fetchFiles();
-    fetchNotifications();
-    fetchStorageInfo();
+    Promise.all([
+      API.get("/files"),
+      API.get("/user/notifications"),
+      API.get("/user/storage"),
+    ]).then(([fRes, nRes, sRes]) => {
+      setFiles(fRes.data || []);
+      setNotifications((nRes.data || []).slice(0, 4));
+      setTotalSize(Number(sRes.data.usedBytes) || 0);
+      setStorageLimit(Number(sRes.data.limitMb) || 15360);
+    }).catch(console.error);
   }, []);
 
-  const fetchFiles = async () => {
-    try {
-      const res = await axios.get("http://localhost:8080/api/files", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+  const limitBytes  = storageLimit * 1024 * 1024;
+  const usedPct     = limitBytes > 0 ? Math.min((totalSize / limitBytes) * 100, 100) : 0;
+  const recentFiles = [...files].sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt)).slice(0, 5);
+  const unread      = notifications.filter(n => !n.read).length;
 
-      const data = res.data;
-
-      setFiles(data);
-
-      // calculate total storage
-      const total = data.reduce((sum, f) => sum + f.fileSize, 0);
-      setTotalSize(total);
-
-    } catch (err) {
-      console.error("Error fetching files", err);
-    }
-  };
-
-  const fetchNotifications = async () => {
-    try {
-      const res = await API.get("/user/notifications");
-      setNotifications(res.data.slice(0, 3));
-    } catch (err) {
-      console.error("Error fetching notifications", err);
-    }
-  };
-
-  const fetchStorageInfo = async () => {
-    try {
-      const res = await API.get("/user/storage");
-      setTotalSize(res.data.usedBytes);
-      setStorageLimit(res.data.limitMb);
-    } catch (err) {
-      console.error("Error fetching storage info", err);
-    }
-  };
-
-  // 📊 FORMAT SIZE
-  const formatSize = (bytes) => {
-    if (bytes === 0) return "0B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return (bytes / Math.pow(k, i)).toFixed(2) + sizes[i];
-  };
+  const quickLinks = [
+    { label: "My Files",    icon: "fa-folder-open",      path: "/files",       color: "#2563eb", bg: "#eff6ff" },
+    { label: "Upload",      icon: "fa-cloud-arrow-up",   path: "/upload",      color: "#7c3aed", bg: "#f5f3ff" },
+    { label: "Folders",     icon: "fa-folder",           path: "/folders",     color: "#d97706", bg: "#fffbeb" },
+    { label: "Shared",      icon: "fa-share-nodes",      path: "/shared-with", color: "#059669", bg: "#ecfdf5" },
+    { label: "Collab",      icon: "fa-users",            path: "/collab",      color: "#0891b2", bg: "#ecfeff" },
+    { label: "Activity",    icon: "fa-clock-rotate-left",path: "/activity",    color: "#64748b", bg: "#f8fafc" },
+  ];
 
   return (
     <Layout type="user">
+      <div className="ud-page">
 
-      <div className="content">
-
-        <h2 style={{ marginBottom: "10px" }}>User Dashboard</h2>
-
-        {/* Welcome */}
-        <div className="welcome-box">
-          <div className="welcome-left">
-            <div className="welcome-icon">
-              <i className="fa-solid fa-hand"></i>
+        {/* HERO */}
+        <div className="ud-hero">
+          <div className="ud-hero-orb" />
+          <div className="ud-hero-left">
+            <p className="ud-hero-greeting">Good day 👋</p>
+            <h1 className="ud-hero-name">Welcome back, {name}</h1>
+            <p className="ud-hero-sub">Here's an overview of your cloud storage activity.</p>
+          </div>
+          <div className="ud-hero-stats">
+            <div className="ud-hero-stat" onClick={() => navigate("/files")} style={{ cursor: "pointer" }}>
+              <span className="ud-hero-stat-val">{files.length}</span>
+              <span className="ud-hero-stat-lbl">Total Files</span>
             </div>
-            <div>
-              <h3>Welcome back, {name}</h3>
-              <p>Here's what's happening with your files today.</p>
+            <div className="ud-hero-stat-divider" />
+            <div className="ud-hero-stat" onClick={() => navigate("/storage")} style={{ cursor: "pointer" }}>
+              <span className="ud-hero-stat-val">{formatSize(totalSize)}</span>
+              <span className="ud-hero-stat-lbl">Storage Used</span>
+            </div>
+            <div className="ud-hero-stat-divider" />
+            <div className="ud-hero-stat" onClick={() => navigate("/notifications")} style={{ cursor: "pointer" }}>
+              <span className="ud-hero-stat-val">{unread}</span>
+              <span className="ud-hero-stat-lbl">Unread Alerts</span>
             </div>
           </div>
         </div>
 
-        <div className="dashboard-grid">
-
-          {/* LEFT */}
-          <div>
-            <div className="card">
-
-              <div className="card-title">My Files Overview</div>
-
-              {/* STATS */}
-              <div className="stats-row">
-
-                {/* TOTAL FILES */}
-                <div
-                  className="stat-card stat-yellow clickable"
-                  onClick={() => navigate("/files")}
-                >
-                  <div className="stat-icon user-icon-files">
-                    <i className="fa-solid fa-folder"></i>
-                  </div>
-                  <div className="stat-text">
-                    <h4>Total Files</h4>
-                    <h2>{files.length}</h2>
-                  </div>
-                </div>
-
-                {/* STORAGE */}
-                <div
-                  className="stat-card stat-blue clickable"
-                  onClick={() => navigate("/storage")}
-                >
-                  <div className="stat-icon user-icon-storage">
-                    <i className="fa-solid fa-cloud"></i>
-                  </div>
-                  <div className="stat-text">
-                    <h4>Storage Used</h4>
-                    <h2>{formatSize(totalSize)}</h2>
-                    <div style={{ fontSize: "12px", marginTop: "4px", opacity: 0.85 }}>
-                      of 15 GB
-                    </div>
-                    <div style={{ background: "rgba(255,255,255,0.3)", borderRadius: "4px", height: "6px", marginTop: "6px" }}>
-                      <div style={{
-                        background: "#fff",
-                        borderRadius: "4px",
-                        height: "6px",
-                        width: Math.min(storageLimit > 0 ? (totalSize / (storageLimit * 1024 * 1024)) * 100 : 0, 100) + "%"
-                      }} />
-                    </div>                  </div>
-                </div>
-
-              </div>
-
-              {/* RECENT FILES */}
-              <div className="card-title">Recent Files</div>
-
-              {files.slice(0, 5).map(file => (
-                <div
-                  key={file.id}
-                  className="list-item user-icon-file clickable"
-                  onClick={() => navigate("/files")} // open files page
-                >
-                  <i className="fa-solid fa-file"></i> {file.fileName}
-                </div>
-              ))}
-
-              {files.length === 0 && (
-                <p>No files uploaded yet</p>
-              )}
-
+        {/* STORAGE BAR */}
+        <div className="ud-storage-bar-card" onClick={() => navigate("/storage")}>
+          <div className="ud-storage-bar-left">
+            <i className="fa-solid fa-hard-drive ud-storage-icon" />
+            <div>
+              <div className="ud-storage-label">Storage</div>
+              <div className="ud-storage-vals">{formatSize(totalSize)} <span>of {formatSize(limitBytes)}</span></div>
             </div>
           </div>
-
-          {/* RIGHT */}
-          <div>
-
-            <div className="card">
-              <div className="card-title">My Files Overview</div>
-
-              <div
-                className="list-item clickable"
-                onClick={() => navigate("/documents")}
-              >
-                <i className="fa-solid fa-folder user-icon-docs"></i> Documents
-              </div>
-
-              <div
-                className="list-item clickable"
-                onClick={() => navigate("/media")}
-              >
-                <i className="fa-solid fa-photo-film user-icon-media"></i> Media
-              </div>
-
-              <div
-                className="list-item clickable"
-                onClick={() => navigate("/shortcuts")}
-              >
-                <i className="fa-solid fa-link user-icon-links"></i> Shortcuts
-              </div>
+          <div className="ud-storage-bar-right">
+            <div className="ud-storage-track">
+              <div className="ud-storage-fill" style={{ width: `${Math.max(usedPct, totalSize > 0 ? 0.5 : 0)}%` }} />
             </div>
+            <span className="ud-storage-pct">{usedPct < 0.1 ? "< 0.1%" : usedPct.toFixed(1) + "%"}</span>
+          </div>
+        </div>
 
-            <div className="card" style={{ marginTop: "20px" }}>
-              <div className="card-title">Notifications</div>
+        {/* QUICK LINKS */}
+        <div className="ud-quick-grid">
+          {quickLinks.map(q => (
+            <div key={q.label} className="ud-quick-card" onClick={() => navigate(q.path)}>
+              <div className="ud-quick-icon" style={{ background: q.bg, color: q.color }}>
+                <i className={`fa-solid ${q.icon}`} />
+              </div>
+              <span className="ud-quick-label">{q.label}</span>
+            </div>
+          ))}
+        </div>
 
-              {notifications.length > 0 ? (
-                notifications.map((notification) => (
-                  <div key={notification.id} className="list-item">
-                    <div>
-                      <strong>{notification.title}</strong>
-                      <p style={{ margin: "6px 0 0" }}>
-                        {notification.message}
-                      </p>
+        {/* BOTTOM GRID */}
+        <div className="ud-bottom-grid">
+
+          {/* Recent Files */}
+          <div className="ud-panel">
+            <div className="ud-panel-head">
+              <span><i className="fa-solid fa-clock-rotate-left" /> Recent Files</span>
+              <button className="ud-panel-link" onClick={() => navigate("/files")}>View all →</button>
+            </div>
+            {recentFiles.length === 0
+              ? <div className="ud-empty"><i className="fa-solid fa-folder-open" /><p>No files yet</p></div>
+              : recentFiles.map(f => {
+                  const meta = getFileIcon(f.fileName);
+                  return (
+                    <div key={f.id} className="ud-file-row" onClick={() => navigate("/files")}>
+                      <div className="ud-file-icon" style={{ color: meta.color }}>
+                        <i className={`fa-solid ${meta.icon}`} />
+                      </div>
+                      <div className="ud-file-info">
+                        <span className="ud-file-name">{f.fileName}</span>
+                        <span className="ud-file-meta">{formatSize(f.fileSize)} · {timeAgo(f.uploadedAt)}</span>
+                      </div>
                     </div>
+                  );
+                })
+            }
+          </div>
+
+          {/* Notifications */}
+          <div className="ud-panel">
+            <div className="ud-panel-head">
+              <span>
+                <i className="fa-solid fa-bell" /> Notifications
+                {unread > 0 && <span className="ud-notif-badge">{unread}</span>}
+              </span>
+              <button className="ud-panel-link" onClick={() => navigate("/notifications")}>View all →</button>
+            </div>
+            {notifications.length === 0
+              ? <div className="ud-empty"><i className="fa-solid fa-bell-slash" /><p>No notifications</p></div>
+              : notifications.map(n => (
+                  <div key={n.id} className={`ud-notif-row${n.read ? "" : " ud-notif-unread"}`} onClick={() => navigate("/notifications")}>
+                    <div className="ud-notif-dot" style={{ background: n.read ? "#e2e8f0" : "#2563eb" }} />
+                    <div className="ud-notif-body">
+                      <span className="ud-notif-title">{n.title}</span>
+                      <span className="ud-notif-msg">{n.message}</span>
+                    </div>
+                    <span className="ud-notif-time">{timeAgo(n.createdAt)}</span>
                   </div>
                 ))
-              ) : (
-                <p>
-                  <i className="fa-solid fa-bell user-icon-bell"></i> No new notifications
-                </p>
-              )}
-            </div>
-
+            }
           </div>
 
         </div>
-
       </div>
-
     </Layout>
   );
 }
-
-export default UserDashboard;

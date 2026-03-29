@@ -347,3 +347,13 @@
   .su-chip { min-width: 90px; padding: 8px 12px; }
   .su-panel { padding: 18px 16px; }
 }
+
+/* ── additional mobile fixes ── */
+@media (max-width: 480px) {
+  .su-hero { padding: 20px 16px; }
+  .su-hero-title { font-size: 20px; }
+  .su-chips { flex-direction: column; }
+  .su-chip { min-width: unset; width: 100%; }
+  .su-donut-outer { width: 140px; height: 140px; }
+  .su-panel { padding: 16px 14px; }
+}

@@ -274,3 +274,15 @@
   .yc-btn-primary, .yc-btn-sso { padding: 12px; font-size: 14px; }
   .yc-input, .yc-input-full { padding: 11px 12px; font-size: 14px; }
 }
+
+/* ── register two-column row ── */
+.yc-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 0;
+}
+
+@media (max-width: 420px) {
+  .yc-row-2 { grid-template-columns: 1fr; }
+}

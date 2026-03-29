@@ -418,3 +418,16 @@
   background: #1d4ed8;
   transform: translateY(-1px);
 }
+
+/* ── additional mobile fixes ── */
+@media (max-width: 480px) {
+  .cb-page-header { gap: 8px; }
+  .cb-header-pills { flex-wrap: wrap; gap: 6px; }
+  .cb-info-bar { padding: 10px 14px; gap: 10px; }
+  .cb-info-name { font-size: 13px; }
+  .cb-view-btn { padding: 6px 10px; font-size: 12px; }
+  .cb-composer { padding: 8px 12px; }
+  .cb-messages { padding: 12px 14px; }
+  .cb-bubble { font-size: 13px; }
+  .cb-hint { display: none; }
+}

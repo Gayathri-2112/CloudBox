@@ -11,7 +11,11 @@
     "@tsparticles/react": "^3.0.0",
     "axios": "^1.13.6",
     "docx-preview": "^0.3.7",
+<<<<<<< HEAD
     "exceljs": "^4.4.0",
+=======
+    "firebase": "^12.11.0",
+>>>>>>> 303ca9a99f2e89b776346bd1b794ece786512390
     "framer-motion": "^12.38.0",
     "jwt-decode": "^4.0.0",
     "react": "^19.2.4",

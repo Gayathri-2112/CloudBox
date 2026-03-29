@@ -203,3 +203,10 @@
   .prf-input { width: 100%; min-width: unset; }
   .prf-value { text-align: left; }
 }
+
+@media (max-width: 480px) {
+  .prf-avatar { width: 72px; height: 72px; font-size: 22px; }
+  .prf-avatar-wrap { width: 72px; height: 72px; }
+  .prf-card { padding: 16px 14px; }
+  .prf-card-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+}
