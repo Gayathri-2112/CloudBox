@@ -6,6 +6,7 @@ import Toast from "../components/common/Toast";
 import { useToast } from "../hooks/useToast";
 import { useSearch } from "../context/SearchContext";
 import "../styles/fileGrid.css";
+import "../styles/style.css";
 
 const CATEGORIES = ["All", "Documents", "Images", "Videos", "Audio", "Other"];
 
@@ -25,6 +26,9 @@ function SharedWithMe() {
   const [localSearch, setLocalSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [viewer, setViewer] = useState(null);
+  const [docxEditMode, setDocxEditMode] = useState(false);
+  const [docxEditText, setDocxEditText] = useState("");
+  const [docxSaving, setDocxSaving] = useState(false);
   const docxContainerRef = useRef(null);
 
   const search = query || localSearch;
@@ -67,7 +71,9 @@ function SharedWithMe() {
     if (isDocx) {
       try {
         const res = await API.get(`/files/preview/${share.fileId}`, { responseType: "arraybuffer" });
-        setViewer({ type: "docx", name: share.fileName, arrayBuffer: res.data });
+        setDocxEditMode(false);
+        setDocxEditText("");
+        setViewer({ type: "docx", name: share.fileName, fileId: share.fileId, arrayBuffer: res.data, canEdit: share.canEdit });
       } catch {
         toast.error("Failed to open document");
       }
@@ -82,14 +88,43 @@ function SharedWithMe() {
     }
   };
 
+  const startDocxEdit = async () => {
+    if (!viewer?.fileId) return;
+    if (docxEditText) { setDocxEditMode(true); return; }
+    try {
+      const res = await API.get(`/files/docx-text/${viewer.fileId}`);
+      setDocxEditText(res.data.text || "");
+      setDocxEditMode(true);
+    } catch {
+      toast.error("Failed to load document text");
+    }
+  };
+
+  const saveDocxEdit = async () => {
+    if (!viewer?.fileId) return;
+    setDocxSaving(true);
+    try {
+      await API.put(`/files/docx-text/${viewer.fileId}`, { text: docxEditText });
+      toast.success("Document saved");
+      const res = await API.get(`/files/preview/${viewer.fileId}`, { responseType: "arraybuffer" });
+      setDocxEditText("");
+      setDocxEditMode(false);
+      setViewer((prev) => ({ ...prev, arrayBuffer: res.data }));
+    } catch (err) {
+      toast.error(err.response?.data || "Failed to save document");
+    } finally {
+      setDocxSaving(false);
+    }
+  };
+
   useEffect(() => {
-    if (viewer?.type === "docx" && viewer.arrayBuffer && docxContainerRef.current) {
+    if (viewer?.type === "docx" && viewer.arrayBuffer && docxContainerRef.current && !docxEditMode) {
       docxContainerRef.current.innerHTML = "";
       renderAsync(viewer.arrayBuffer, docxContainerRef.current).catch(() =>
         toast.error("Failed to render document")
       );
     }
-  }, [viewer]);
+  }, [viewer, docxEditMode]);
 
   return (
     <Layout type="user">
@@ -138,7 +173,11 @@ function SharedWithMe() {
               </div>
               <div className="file-name">{share.fileName}</div>
               <div style={{ fontSize: "12px", color: "#6b7280" }}>{share.ownerEmail}</div>
-              <div style={{ fontSize: "11px", color: "#9ca3af" }}>{share.permission}</div>
+              <div style={{ fontSize: "11px" }}>
+                <span className={`share-perm-badge perm-${share.permission?.toLowerCase()}`}>
+                  {share.permission}
+                </span>
+              </div>
               <div className="file-actions">
                 <button className="btn btn-primary" onClick={() => viewFile(share)}>View</button>
                 <button
@@ -155,14 +194,34 @@ function SharedWithMe() {
 
         {/* Viewer Modal */}
         {viewer && (
-          <div className="viewer-modal" onClick={() => setViewer(null)}>
+          <div className="viewer-modal" onClick={() => { setViewer(null); setDocxEditMode(false); setDocxEditText(""); }}>
             <div className="viewer-content" onClick={(e) => e.stopPropagation()}>
               <div className="viewer-header">
                 <span>{viewer.name}</span>
-                <button className="close-btn" onClick={() => setViewer(null)}>✕</button>
+                <button className="close-btn" onClick={() => { setViewer(null); setDocxEditMode(false); setDocxEditText(""); }}>✕</button>
               </div>
               {viewer.type === "docx" && (
-                <div ref={docxContainerRef} className="docx-render-container" />
+                <>
+                  <div className="docx-toolbar">
+                    <button className={`docx-tab-btn${!docxEditMode ? " active" : ""}`} onClick={() => setDocxEditMode(false)}>
+                      <i className="fa-solid fa-eye"></i> View
+                    </button>
+                    {viewer.canEdit && (
+                      <button className={`docx-tab-btn${docxEditMode ? " active" : ""}`} onClick={startDocxEdit}>
+                        <i className="fa-solid fa-pen"></i> Edit
+                      </button>
+                    )}
+                    {docxEditMode && (
+                      <button className="docx-save-btn" onClick={saveDocxEdit} disabled={docxSaving}>
+                        {docxSaving ? <><i className="fa-solid fa-spinner fa-spin"></i> Saving…</> : <><i className="fa-solid fa-floppy-disk"></i> Save</>}
+                      </button>
+                    )}
+                  </div>
+                  {docxEditMode
+                    ? <textarea className="docx-edit-textarea" value={docxEditText} onChange={e => setDocxEditText(e.target.value)} spellCheck />
+                    : <div ref={docxContainerRef} className="docx-render-container" />
+                  }
+                </>
               )}
               {viewer.type?.startsWith("image/") && <img src={viewer.url} alt="preview" className="viewer-media" />}
               {viewer.type === "application/pdf" && <iframe src={viewer.url} className="viewer-frame" title={viewer.name} />}

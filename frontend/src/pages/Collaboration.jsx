@@ -48,6 +48,9 @@ export default function Collaboration() {
   const [search,         setSearch]         = useState("");
   const [sending,        setSending]        = useState(false);
   const [viewer,         setViewer]         = useState(null);
+  const [docxEditMode,   setDocxEditMode]   = useState(false);
+  const [docxEditText,   setDocxEditText]   = useState("");
+  const [docxSaving,     setDocxSaving]     = useState(false);
   const bottomRef    = useRef(null);
   const docxRef      = useRef(null);
 
@@ -105,10 +108,13 @@ export default function Collaboration() {
 
   async function viewFile(file) {
     const isDocx = /\.(doc|docx)$/i.test(file.fileName);
+    const canEdit = file.accessType === "OWNER" || file.permission === "EDIT";
     try {
       if (isDocx) {
         const res = await API.get(`/files/preview/${file.fileId}`, { responseType: "arraybuffer" });
-        setViewer({ type: "docx", name: file.fileName, arrayBuffer: res.data });
+        setDocxEditMode(false);
+        setDocxEditText("");
+        setViewer({ type: "docx", name: file.fileName, fileId: file.fileId, arrayBuffer: res.data, canEdit });
       } else {
         const res = await API.get(`/files/preview/${file.fileId}`, { responseType: "blob" });
         const blob = new Blob([res.data], { type: res.headers["content-type"] });
@@ -119,13 +125,48 @@ export default function Collaboration() {
     }
   }
 
-  // render docx when viewer opens
+  async function startDocxEdit() {
+    if (!viewer?.fileId) return;
+    if (docxEditText) { setDocxEditMode(true); return; }
+    try {
+      const res = await API.get(`/files/docx-text/${viewer.fileId}`);
+      setDocxEditText(res.data.text || "");
+      setDocxEditMode(true);
+    } catch {
+      toast.error("Failed to load document text");
+    }
+  }
+
+  async function saveDocxEdit() {
+    if (!viewer?.fileId) return;
+    setDocxSaving(true);
+    try {
+      await API.put(`/files/docx-text/${viewer.fileId}`, { text: docxEditText });
+      toast.success("Document saved");
+      const res = await API.get(`/files/preview/${viewer.fileId}`, { responseType: "arraybuffer" });
+      setDocxEditText("");
+      setDocxEditMode(false);
+      setViewer(prev => ({ ...prev, arrayBuffer: res.data }));
+    } catch (err) {
+      toast.error(err.response?.data || "Failed to save");
+    } finally {
+      setDocxSaving(false);
+    }
+  }
+
+  function closeViewer() {
+    setViewer(null);
+    setDocxEditMode(false);
+    setDocxEditText("");
+  }
+
+  // render docx when viewer opens or switches back to view mode
   useEffect(() => {
-    if (viewer?.type === "docx" && viewer.arrayBuffer && docxRef.current) {
+    if (viewer?.type === "docx" && viewer.arrayBuffer && docxRef.current && !docxEditMode) {
       docxRef.current.innerHTML = "";
       renderAsync(viewer.arrayBuffer, docxRef.current).catch(() => toast.error("Failed to render document"));
     }
-  }, [viewer]);
+  }, [viewer, docxEditMode]);
 
   const visibleFiles  = files.filter(f => f.fileName.toLowerCase().includes(search.toLowerCase()));
   const selectedFile  = files.find(f => String(f.fileId) === selectedFileId);
@@ -304,14 +345,44 @@ export default function Collaboration() {
 
         {/* ── File Viewer Modal ── */}
         {viewer && (
-          <div className="viewer-modal" onClick={() => setViewer(null)}>
+          <div className="viewer-modal" onClick={closeViewer}>
             <div className="viewer-content" onClick={e => e.stopPropagation()}>
               <div className="viewer-header">
                 <span>{viewer.name}</span>
-                <button className="close-btn" onClick={() => setViewer(null)}>✕</button>
+                <button className="close-btn" onClick={closeViewer}>✕</button>
               </div>
+
               {viewer.type === "docx" && (
-                <div ref={docxRef} className="docx-render-container" />
+                <>
+                  <div className="docx-toolbar">
+                    <button
+                      className={`docx-tab-btn${!docxEditMode ? " active" : ""}`}
+                      onClick={() => setDocxEditMode(false)}
+                    >
+                      <i className="fa-solid fa-eye"></i> View
+                    </button>
+                    {viewer.canEdit && (
+                      <button
+                        className={`docx-tab-btn${docxEditMode ? " active" : ""}`}
+                        onClick={startDocxEdit}
+                      >
+                        <i className="fa-solid fa-pen"></i> Edit
+                      </button>
+                    )}
+                    {docxEditMode && (
+                      <button className="docx-save-btn" onClick={saveDocxEdit} disabled={docxSaving}>
+                        {docxSaving
+                          ? <><i className="fa-solid fa-spinner fa-spin"></i> Saving…</>
+                          : <><i className="fa-solid fa-floppy-disk"></i> Save</>
+                        }
+                      </button>
+                    )}
+                  </div>
+                  {docxEditMode
+                    ? <textarea className="docx-edit-textarea" value={docxEditText} onChange={e => setDocxEditText(e.target.value)} spellCheck />
+                    : <div ref={docxRef} className="docx-render-container" />
+                  }
+                </>
               )}
               {viewer.type?.startsWith("image/") && (
                 <img src={viewer.url} alt="preview" className="viewer-media" />

@@ -39,23 +39,45 @@ public class FileShareService {
             throw new RuntimeException("File is required");
         }
 
-        if (request.getSharedWith() == null || request.getSharedWith().isBlank()) {
+        // resolve single recipient from either field
+        String recipient = request.getSharedWith();
+        if ((recipient == null || recipient.isBlank())
+                && request.getSharedWithList() != null
+                && !request.getSharedWithList().isEmpty()) {
+            recipient = request.getSharedWithList().get(0);
+        }
+
+        if (recipient == null || recipient.isBlank()) {
             throw new RuntimeException("Recipient email is required");
         }
 
-        String permission = normalizePermission(request.getPermission());
+        return shareSingle(request.getFileId(), recipient.trim(), request.getPermission(), ownerEmail);
+    }
 
-        FileEntity file = fileRepository.findById(request.getFileId())
+    public List<FileShareDTO> shareFileWithMany(ShareFileRequest request, String ownerEmail) {
+        if (request.getFileId() == null) throw new RuntimeException("File is required");
+        if (request.getSharedWithList() == null || request.getSharedWithList().isEmpty())
+            throw new RuntimeException("At least one recipient is required");
+
+        return request.getSharedWithList().stream()
+                .map(email -> shareSingle(request.getFileId(), email.trim(), request.getPermission(), ownerEmail))
+                .toList();
+    }
+
+    private FileShareDTO shareSingle(Long fileId, String recipientEmail, String permission, String ownerEmail) {
+
+        String perm = normalizePermission(permission);
+
+        FileEntity file = fileRepository.findById(fileId)
                 .orElseThrow(() -> new RuntimeException("File not found"));
 
         if (!file.getOwnerEmail().equals(ownerEmail)) {
             throw new RuntimeException("You can only share your own files");
         }
 
-        User recipient = userRepository.findByEmail(request.getSharedWith().trim())
-                .orElseThrow(() -> new RuntimeException("Recipient user not found"));
+        User recipient = userRepository.findByEmail(recipientEmail)
+                .orElseThrow(() -> new RuntimeException("User not found: " + recipientEmail));
 
-        // 🚫 Prevent sharing files with admin
         if (recipient.getRole().name().equals("ADMIN")) {
             throw new RuntimeException("Files cannot be shared with admin");
         }
@@ -65,27 +87,26 @@ public class FileShareService {
         }
 
         if (fileShareRepository.existsByFileIdAndSharedWith(file.getId(), recipient.getEmail())) {
-            throw new RuntimeException("File is already shared with this user");
+            // update permission instead of throwing
+            FileShare existing = fileShareRepository.findByFileIdAndSharedWith(file.getId(), recipient.getEmail())
+                    .orElseThrow();
+            existing.setPermission(perm);
+            return mapToDto(fileShareRepository.save(existing));
         }
 
         FileShare share = new FileShare();
         share.setFile(file);
         share.setOwnerEmail(ownerEmail);
         share.setSharedWith(recipient.getEmail());
-        share.setPermission(permission);
+        share.setPermission(perm);
         share.setCreatedAt(LocalDateTime.now());
 
         FileShare savedShare = fileShareRepository.save(share);
 
         systemEventService.log(ownerEmail, "SHARE_FILE",
-                "Shared " + file.getFileName() + " with " + recipient.getEmail());
-        systemEventService.notifyAdmins("File Shared",
-                ownerEmail + " shared " + file.getFileName() + " with " + recipient.getEmail());
-        systemEventService.notifyUser(
-                recipient.getEmail(),
-                "File Shared With You",
-                ownerEmail + " shared " + file.getFileName() + " with permission " + permission
-        );
+                "Shared " + file.getFileName() + " with " + recipient.getEmail() + " [" + perm + "]");
+        systemEventService.notifyUser(recipient.getEmail(), "File Shared With You",
+                ownerEmail + " shared " + file.getFileName() + " with " + perm + " permission");
 
         return mapToDto(savedShare);
     }
@@ -151,18 +172,25 @@ public class FileShareService {
     }
     
     public boolean canViewFile(Long fileId, String userEmail) {
-    return fileShareRepository
-            .findByFileIdAndSharedWith(fileId, userEmail)
-            .map(share ->
-                    share.getPermission().equals("VIEW") ||
-                    share.getPermission().equals("DOWNLOAD")
-            )
-            .orElse(false);
-}
+        return fileShareRepository
+                .findByFileIdAndSharedWith(fileId, userEmail)
+                .map(share -> {
+                    String p = share.getPermission();
+                    return p.equals("VIEW") || p.equals("DOWNLOAD") || p.equals("EDIT");
+                })
+                .orElse(false);
+    }
 
     public boolean canDownloadFile(Long fileId, String userEmail) {
         return fileShareRepository.findByFileIdAndSharedWith(fileId, userEmail)
-                .map(share -> "DOWNLOAD".equalsIgnoreCase(share.getPermission()))
+                .map(share -> "DOWNLOAD".equalsIgnoreCase(share.getPermission())
+                           || "EDIT".equalsIgnoreCase(share.getPermission()))
+                .orElse(false);
+    }
+
+    public boolean canEditFile(Long fileId, String userEmail) {
+        return fileShareRepository.findByFileIdAndSharedWith(fileId, userEmail)
+                .map(share -> "EDIT".equalsIgnoreCase(share.getPermission()))
                 .orElse(false);
     }
 
@@ -177,12 +205,10 @@ public class FileShareService {
         if (permission == null || permission.isBlank()) {
             return "VIEW";
         }
-
         String normalized = permission.trim().toUpperCase();
-        if (!normalized.equals("VIEW") && !normalized.equals("DOWNLOAD")) {
-            throw new RuntimeException("Permission must be VIEW or DOWNLOAD");
+        if (!normalized.equals("VIEW") && !normalized.equals("DOWNLOAD") && !normalized.equals("EDIT")) {
+            throw new RuntimeException("Permission must be VIEW, DOWNLOAD, or EDIT");
         }
-
         return normalized;
     }
 
@@ -197,12 +223,14 @@ public class FileShareService {
         dto.setCreatedAt(share.getCreatedAt());
         dto.setCanView(
     "VIEW".equalsIgnoreCase(share.getPermission()) ||
-    "DOWNLOAD".equalsIgnoreCase(share.getPermission())
+    "DOWNLOAD".equalsIgnoreCase(share.getPermission()) ||
+    "EDIT".equalsIgnoreCase(share.getPermission())
 );
-
         dto.setCanDownload(
-    "DOWNLOAD".equalsIgnoreCase(share.getPermission())
+    "DOWNLOAD".equalsIgnoreCase(share.getPermission()) ||
+    "EDIT".equalsIgnoreCase(share.getPermission())
 );
+        dto.setCanEdit("EDIT".equalsIgnoreCase(share.getPermission()));
         return dto;
     }
 }

@@ -50,7 +50,7 @@ function MyFiles() {
 
   const [files, setFiles] = useState([]);
   const [folders, setFolders] = useState(["root"]);
-  const [shareEmail, setShareEmail] = useState({});
+  const [shareEmails, setShareEmails] = useState({});   // { fileId: "email1, email2" }
   const [sharePermission, setSharePermission] = useState({});
   const [moveFolder, setMoveFolder] = useState({});
   const [localSearch, setLocalSearch] = useState("");
@@ -196,13 +196,18 @@ function MyFiles() {
   }, [viewer, docxEditMode]);
 
   const shareFile = async (fileId) => {
-    const email = shareEmail[fileId]?.trim();
+    const raw = shareEmails[fileId] || "";
+    const emails = raw.split(/[,;\s]+/).map(e => e.trim()).filter(Boolean);
     const permission = sharePermission[fileId] || "VIEW";
-    if (!email) { toast.warning("Enter recipient email"); return; }
+    if (emails.length === 0) { toast.warning("Enter at least one recipient email"); return; }
     try {
-      await API.post("/files/share", { fileId, sharedWith: email, permission });
-      setShareEmail((prev) => ({ ...prev, [fileId]: "" }));
-      toast.success("File shared successfully");
+      if (emails.length === 1) {
+        await API.post("/files/share", { fileId, sharedWith: emails[0], permission });
+      } else {
+        await API.post("/files/share/bulk", { fileId, sharedWithList: emails, permission });
+      }
+      setShareEmails((prev) => ({ ...prev, [fileId]: "" }));
+      toast.success(`Shared with ${emails.length} recipient${emails.length > 1 ? "s" : ""}`);
     } catch (err) {
       toast.error(err.response?.data || "Failed to share file");
     }
@@ -271,11 +276,12 @@ function MyFiles() {
 
               <div className="file-row-actions">
                 <input
-                  type="email"
-                  placeholder="Share with email"
-                  value={shareEmail[file.id] || ""}
-                  onChange={(e) => setShareEmail((prev) => ({ ...prev, [file.id]: e.target.value }))}
+                  type="text"
+                  placeholder="Recipient emails (comma separated)"
+                  value={shareEmails[file.id] || ""}
+                  onChange={(e) => setShareEmails((prev) => ({ ...prev, [file.id]: e.target.value }))}
                   className="inline-input"
+                  title="Separate multiple emails with commas"
                 />
                 <select
                   value={sharePermission[file.id] || "VIEW"}
@@ -284,6 +290,7 @@ function MyFiles() {
                 >
                   <option value="VIEW">View</option>
                   <option value="DOWNLOAD">Download</option>
+                  <option value="EDIT">Edit</option>
                 </select>
                 <button className="btn btn-share btn-sm" onClick={() => shareFile(file.id)}>Share</button>
 

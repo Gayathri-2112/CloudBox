@@ -12,9 +12,9 @@ public class FileShareDTO {
     private String permission;
     private LocalDateTime createdAt;
 
-    // ✅ NEW FIELDS (VERY IMPORTANT)
     private boolean canView;
     private boolean canDownload;
+    private boolean canEdit;
 
     // =========================
     // GETTERS & SETTERS
@@ -92,5 +92,13 @@ public class FileShareDTO {
 
     public void setCanDownload(boolean canDownload) {
         this.canDownload = canDownload;
+    }
+
+    public boolean isCanEdit() {
+        return canEdit;
+    }
+
+    public void setCanEdit(boolean canEdit) {
+        this.canEdit = canEdit;
     }
 }

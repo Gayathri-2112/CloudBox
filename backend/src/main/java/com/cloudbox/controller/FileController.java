@@ -100,6 +100,14 @@ public class FileController {
         return ResponseEntity.ok(fileShareService.shareFile(request, auth.getName()));
     }
 
+    @PostMapping("/share/bulk")
+    public ResponseEntity<List<FileShareDTO>> shareFileBulk(
+            @RequestBody ShareFileRequest request,
+            Authentication auth
+    ) {
+        return ResponseEntity.ok(fileShareService.shareFileWithMany(request, auth.getName()));
+    }
+
     @GetMapping("/shared-with-me")
     public ResponseEntity<List<FileShareDTO>> getSharedWithMe(Authentication auth) {
         return ResponseEntity.ok(fileShareService.getFilesSharedWithUser(auth.getName()));
@@ -219,20 +227,21 @@ public class FileController {
     ) throws Exception {
         FileEntity file = fileService.getFileIfAccessible(id, auth.getName());
 
-        if (!file.getOwnerEmail().equals(auth.getName())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Only the owner can edit this file");
+        boolean isOwner = file.getOwnerEmail().equals(auth.getName());
+        boolean canEdit = fileShareService.canEditFile(id, auth.getName());
+
+        if (!isOwner && !canEdit) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You do not have edit permission for this file");
         }
 
         String newText = body.getOrDefault("text", "");
         String[] lines = newText.split("\n", -1);
 
         try (XWPFDocument doc = new XWPFDocument(new FileInputStream(file.getFilePath()))) {
-            // Clear existing paragraphs
             int size = doc.getParagraphs().size();
             for (int i = size - 1; i >= 0; i--) {
                 doc.removeBodyElement(doc.getPosOfParagraph(doc.getParagraphs().get(i)));
             }
-            // Write new paragraphs
             for (String line : lines) {
                 XWPFParagraph para = doc.createParagraph();
                 XWPFRun run = para.createRun();
