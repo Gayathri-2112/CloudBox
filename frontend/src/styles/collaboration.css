@@ -721,3 +721,49 @@
     display: none;
   }
 }
+
+/* ── WhatsApp-style comment selection & delete ── */
+.cb-row-selected .cb-bubble-me,
+.cb-row-selected .cb-bubble-other {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.cb-row {
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.1s;
+}
+
+.cb-row-selected {
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.cb-action-bar {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cb-action-bar-me {
+  justify-content: flex-end;
+}
+
+.cb-action-delete {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.cb-action-delete:hover {
+  background: #fecaca;
+}

@@ -68,23 +68,18 @@ function SharedWithMe() {
 
   const viewFile = async (share) => {
     const isDocx = /\.(doc|docx)$/i.test(share.fileName);
-    if (isDocx) {
-      try {
-        const res = await API.get(`/files/preview/${share.fileId}`, { responseType: "arraybuffer" });
+    try {
+      const res = await API.get(`/files/preview/${share.fileId}`, { responseType: "arraybuffer" });
+      if (isDocx) {
         setDocxEditMode(false);
         setDocxEditText("");
         setViewer({ type: "docx", name: share.fileName, fileId: share.fileId, arrayBuffer: res.data, canEdit: share.canEdit });
-      } catch {
-        toast.error("Failed to open document");
+      } else {
+        const mimeType = share.fileType || "application/octet-stream";
+        const blob = new Blob([res.data], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        setViewer({ url, type: mimeType, name: share.fileName, blobUrl: true });
       }
-      return;
-    }
-    try {
-      const directUrl = getDirectFileUrl(share);
-      if (!directUrl) {
-        throw new Error("Missing file URL");
-      }
-      setViewer({ url: directUrl, type: share.fileType || "application/octet-stream", name: share.fileName });
     } catch {
       toast.error("Failed to open file");
     }
@@ -196,11 +191,11 @@ function SharedWithMe() {
 
         {/* Viewer Modal */}
         {viewer && (
-          <div className="viewer-modal" onClick={() => { setViewer(null); setDocxEditMode(false); setDocxEditText(""); }}>
+          <div className="viewer-modal" onClick={() => { if (viewer?.blobUrl) URL.revokeObjectURL(viewer.url); setViewer(null); setDocxEditMode(false); setDocxEditText(""); }}>
             <div className="viewer-content" onClick={(e) => e.stopPropagation()}>
               <div className="viewer-header">
                 <span>{viewer.name}</span>
-                <button className="close-btn" onClick={() => { setViewer(null); setDocxEditMode(false); setDocxEditText(""); }}>✕</button>
+                <button className="close-btn" onClick={() => { if (viewer?.blobUrl) URL.revokeObjectURL(viewer.url); setViewer(null); setDocxEditMode(false); setDocxEditText(""); }}>✕</button>
               </div>
               {viewer.type === "docx" && (
                 <>

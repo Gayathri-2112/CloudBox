@@ -52,6 +52,7 @@ export default function Collaboration() {
   const [docxEditMode,   setDocxEditMode]   = useState(false);
   const [docxEditText,   setDocxEditText]   = useState("");
   const [docxSaving,     setDocxSaving]     = useState(false);
+  const [selectedComment, setSelectedComment] = useState(null); // WhatsApp-style selection
   const bottomRef    = useRef(null);
   const docxRef      = useRef(null);
 
@@ -107,21 +108,30 @@ export default function Collaboration() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendComment(); }
   }
 
+  async function deleteComment(commentId) {
+    try {
+      await API.delete(`/files/collaboration/comment/${commentId}`);
+      setComments(prev => prev.filter(c => c.id !== commentId));
+      toast.success("Comment deleted");
+    } catch {
+      toast.error("Failed to delete comment");
+    }
+  }
+
   async function viewFile(file) {
     const isDocx = /\.(doc|docx)$/i.test(file.fileName);
     const canEdit = file.accessType === "OWNER" || file.permission === "EDIT";
     try {
+      const res = await API.get(`/files/preview/${file.fileId}`, { responseType: "arraybuffer" });
       if (isDocx) {
-        const res = await API.get(`/files/preview/${file.fileId}`, { responseType: "arraybuffer" });
         setDocxEditMode(false);
         setDocxEditText("");
         setViewer({ type: "docx", name: file.fileName, fileId: file.fileId, arrayBuffer: res.data, canEdit });
       } else {
-        const directUrl = getDirectFileUrl(file);
-        if (!directUrl) {
-          throw new Error("Missing file URL");
-        }
-        setViewer({ type: file.fileType || "application/octet-stream", name: file.fileName, url: directUrl });
+        const mimeType = file.fileType || "application/octet-stream";
+        const blob = new Blob([res.data], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        setViewer({ type: mimeType, name: file.fileName, url, blobUrl: true });
       }
     } catch {
       toast.error("Failed to open file");
@@ -158,6 +168,7 @@ export default function Collaboration() {
   }
 
   function closeViewer() {
+    if (viewer?.blobUrl && viewer?.url) URL.revokeObjectURL(viewer.url);
     setViewer(null);
     setDocxEditMode(false);
     setDocxEditText("");
@@ -274,7 +285,7 @@ export default function Collaboration() {
               )}
 
               {/* messages */}
-              <div className="cb-messages">
+              <div className="cb-messages" onClick={() => setSelectedComment(null)}>
                 {comments.length === 0 ? (
                   <div className="cb-no-chat">
                     <div className="cb-no-chat-icon"><i className="fa-regular fa-comment-dots"></i></div>
@@ -284,10 +295,16 @@ export default function Collaboration() {
                 ) : (
                   comments.map((c, idx) => {
                     const isMe = c.userEmail === currentUser;
+                    const canDelete = isMe || selectedFile?.accessType === "OWNER";
                     const showHead = idx === 0 || comments[idx - 1].userEmail !== c.userEmail;
                     const avatarBg = getAvatarColor(c.userEmail);
+                    const isSelected = selectedComment === c.id;
                     return (
-                      <div key={c.id} className={`cb-row${isMe ? " cb-row-me" : " cb-row-other"}`}>
+                      <div
+                        key={c.id}
+                        className={`cb-row${isMe ? " cb-row-me" : " cb-row-other"}${isSelected ? " cb-row-selected" : ""}`}
+                        onClick={e => { e.stopPropagation(); setSelectedComment(isSelected ? null : c.id); }}
+                      >
                         {!isMe && (
                           <div className="cb-avatar" style={{ background: avatarBg, opacity: showHead ? 1 : 0 }}>
                             {getInitials(c.userEmail)}
@@ -299,6 +316,16 @@ export default function Collaboration() {
                             {c.message}
                           </div>
                           <div className={`cb-time${isMe ? " cb-time-me" : ""}`}>{relTime(c.createdAt)}</div>
+                          {isSelected && canDelete && (
+                            <div className={`cb-action-bar${isMe ? " cb-action-bar-me" : ""}`}>
+                              <button
+                                className="cb-action-delete"
+                                onClick={e => { e.stopPropagation(); deleteComment(c.id); setSelectedComment(null); }}
+                              >
+                                <i className="fa-solid fa-trash-can"></i> Delete
+                              </button>
+                            </div>
+                          )}
                         </div>
                         {isMe && (
                           <div className="cb-avatar cb-avatar-me" style={{ background: avatarBg, opacity: showHead ? 1 : 0 }}>

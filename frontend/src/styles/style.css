@@ -1984,3 +1984,10 @@ tr:hover td {
   color: var(--text-faint);
   white-space: nowrap;
 }
+
+/* ── sort controls ── */
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}

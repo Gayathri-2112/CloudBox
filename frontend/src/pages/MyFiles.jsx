@@ -11,7 +11,7 @@ import "../styles/style.css";
 import "../components/layout/layout.css";
 import "../components/common/card.css";
 
-const CATEGORIES = ["All", "Documents", "Images", "Videos", "Audio", "Other"];
+const CATEGORIES = ["All", "Starred", "Documents", "Images", "Videos", "Audio", "Other"];
 
 function getCategory(file) {
   const name = file.fileName?.toLowerCase() || "";
@@ -65,6 +65,10 @@ function MyFiles() {
   const [linkModal, setLinkModal] = useState(null); // { fileId, fileName, links:[] }
   const [linkPerm, setLinkPerm] = useState("VIEW");
   const [linkExpiry, setLinkExpiry] = useState("");
+  const [sortBy, setSortBy] = useState("date");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [renameId, setRenameId] = useState(null);
+  const [renameName, setRenameName] = useState("");
 
   // use only local search — global header search is for navigation, not filtering
   const search = localSearch;
@@ -92,12 +96,22 @@ function MyFiles() {
   }, []);
 
   const filtered = useMemo(() => {
-    return files.filter((f) => {
+    let result = files.filter((f) => {
       const matchSearch = f.fileName.toLowerCase().includes(search.toLowerCase());
-      const matchCat = category === "All" || getCategory(f) === category;
+      const matchCat = category === "All"
+        || (category === "Starred" && f.starred)
+        || (category !== "Starred" && getCategory(f) === category);
       return matchSearch && matchCat;
     });
-  }, [files, search, category]);
+    result = [...result].sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === "name") cmp = a.fileName.localeCompare(b.fileName);
+      else if (sortBy === "size") cmp = (a.fileSize || 0) - (b.fileSize || 0);
+      else cmp = new Date(a.uploadedAt || 0) - new Date(b.uploadedAt || 0);
+      return sortOrder === "asc" ? cmp : -cmp;
+    });
+    return result;
+  }, [files, search, category, sortBy, sortOrder]);
 
   const deleteFile = async (id) => {
     try {
@@ -254,6 +268,45 @@ function MyFiles() {
     toast.success("Link copied to clipboard");
   };
 
+  const toggleStar = async (file) => {
+    try {
+      await API.put(`/files/${file.id}/star`);
+      setFiles(prev => prev.map(f => f.id === file.id ? { ...f, starred: !f.starred } : f));
+    } catch {
+      toast.error("Failed to update star");
+    }
+  };
+
+  const trashFile = async (id) => {
+    try {
+      await API.put(`/files/${id}/trash`);
+      setFiles(prev => prev.filter(f => f.id !== id));
+      toast.success("Moved to trash");
+    } catch (err) {
+      toast.error(err.response?.data || "Failed to move to trash");
+    } finally {
+      setConfirmDelete(null);
+    }
+  };
+
+  const startRename = (file) => {
+    setRenameId(file.id);
+    setRenameName(file.fileName);
+  };
+
+  const submitRename = async (id) => {
+    if (!renameName.trim()) return;
+    try {
+      await API.put(`/files/${id}/rename`, { newName: renameName.trim() });
+      setFiles(prev => prev.map(f => f.id === id ? { ...f, fileName: renameName.trim() } : f));
+      toast.success("File renamed");
+    } catch (err) {
+      toast.error(err.response?.data || "Rename failed");
+    } finally {
+      setRenameId(null);
+    }
+  };
+
   return (
     <Layout type="user">
       <div className="content">
@@ -281,6 +334,20 @@ function MyFiles() {
               </button>
             ))}
           </div>
+          <div className="sort-controls">
+            <select className="inline-select" value={sortBy} onChange={e => setSortBy(e.target.value)}>
+              <option value="date">Date</option>
+              <option value="name">Name</option>
+              <option value="size">Size</option>
+            </select>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setSortOrder(o => o === "asc" ? "desc" : "asc")}
+              title="Toggle sort order"
+            >
+              <i className={`fa-solid fa-arrow-${sortOrder === "asc" ? "up" : "down"}`}></i>
+            </button>
+          </div>
         </div>
 
         <div className="page-card">
@@ -295,7 +362,22 @@ function MyFiles() {
               <div className="file-row-left">
                 <i className={`fa-solid ${getFileIcon(file)} file-type-icon`}></i>
                 <div>
-                  <div className="file-row-name">{file.fileName}</div>
+                  {renameId === file.id ? (
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <input
+                        className="yc-input"
+                        style={{ padding: "2px 8px", fontSize: 13 }}
+                        value={renameName}
+                        onChange={e => setRenameName(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") submitRename(file.id); if (e.key === "Escape") setRenameId(null); }}
+                        autoFocus
+                      />
+                      <button className="btn btn-success btn-sm" onClick={() => submitRename(file.id)}>✓</button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => setRenameId(null)}>✕</button>
+                    </div>
+                  ) : (
+                    <div className="file-row-name">{file.fileName}</div>
+                  )}
                   <div className="file-row-meta">
                     {formatSize(file.fileSize)} &bull; {file.folder || "root"} &bull;{" "}
                     {new Date(file.uploadedAt).toLocaleDateString()}
@@ -304,6 +386,19 @@ function MyFiles() {
               </div>
 
               <div className="file-row-actions">
+                <button
+                  className="btn btn-sm"
+                  style={{ color: file.starred ? "#f59e0b" : "#9ca3af", background: "transparent", border: "1px solid #e5e7eb" }}
+                  onClick={() => toggleStar(file)}
+                  title={file.starred ? "Unstar" : "Star"}
+                >
+                  <i className={`fa-${file.starred ? "solid" : "regular"} fa-star`}></i>
+                </button>
+
+                <button className="btn btn-secondary btn-sm" onClick={() => startRename(file)} title="Rename">
+                  <i className="fa-solid fa-pencil"></i>
+                </button>
+
                 <button
                   className="btn btn-share btn-sm"
                   onClick={() => {
@@ -330,7 +425,9 @@ function MyFiles() {
                 <button className="btn btn-secondary btn-sm" onClick={() => openLinkModal(file)}>
                   <i className="fa-solid fa-link"></i> Link
                 </button>
-                <button className="btn btn-danger btn-sm" onClick={() => setConfirmDelete(file.id)}>Delete</button>
+                <button className="btn btn-danger btn-sm" onClick={() => setConfirmDelete(file.id)}>
+                  <i className="fa-solid fa-trash"></i>
+                </button>
               </div>
             </div>
           ))}
@@ -341,10 +438,10 @@ function MyFiles() {
           <div className="viewer-modal" onClick={() => setConfirmDelete(null)}>
             <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
               <i className="fa-solid fa-triangle-exclamation confirm-icon"></i>
-              <h3>Delete File?</h3>
-              <p>This action cannot be undone.</p>
+              <h3>Move to Trash?</h3>
+              <p>You can restore it from the Trash page.</p>
               <div className="confirm-actions">
-                <button className="btn btn-danger" onClick={() => deleteFile(confirmDelete)}>Delete</button>
+                <button className="btn btn-danger" onClick={() => trashFile(confirmDelete)}>Move to Trash</button>
                 <button className="btn btn-secondary" onClick={() => setConfirmDelete(null)}>Cancel</button>
               </div>
             </div>

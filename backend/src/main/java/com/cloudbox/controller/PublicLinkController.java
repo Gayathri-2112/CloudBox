@@ -1,4 +1,5 @@
 package com.cloudbox.controller;
+
 import com.cloudbox.model.PublicFileLink;
 import com.cloudbox.service.FileService;
 import com.cloudbox.service.PublicLinkService;
@@ -6,6 +7,7 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 import java.util.Map;
 
@@ -29,8 +31,9 @@ public class PublicLinkController {
         Long fileId = Long.valueOf(body.get("fileId").toString());
         String permission = (String) body.getOrDefault("permission", "VIEW");
         Integer expiryHours = body.containsKey("expiryHours")
-                ? Integer.valueOf(body.get("expiryHours").toString())
-                : null;
+
+                ? Integer.valueOf(body.get("expiryHours").toString()) : null;
+
         return ResponseEntity.ok(publicLinkService.createLink(fileId, auth.getName(), permission, expiryHours));
     }
 
@@ -56,8 +59,9 @@ public class PublicLinkController {
         var file = link.getFile();
         byte[] content = fileService.getPublicFileContent(file.getId());
         String contentType = file.getContentType() != null
-                ? file.getContentType()
-                : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+
+                ? file.getContentType() : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+
 
         ContentDisposition cd = link.getPermission().equals("DOWNLOAD")
                 ? ContentDisposition.attachment().filename(file.getFileName()).build()
@@ -79,6 +83,9 @@ public class PublicLinkController {
                 "fileName", file.getFileName(),
                 "fileType", file.getContentType() != null ? file.getContentType() : "",
                 "permission", link.getPermission(),
-                "fileUrl", file.getFileUrl() != null ? file.getFileUrl() : ""));
+
+                "fileUrl", file.getFileUrl() != null ? file.getFileUrl() : ""
+        ));
+
     }
 }

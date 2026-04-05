@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 body {
   margin: 0;
   font-family: Inter, sans-serif;
@@ -28,4 +29,36 @@ body {
     width: 100%;
     padding: 0 16px;
   }
+=======
+body {
+  margin: 0;
+  font-family: Inter, sans-serif;
+  background: #F5F7FA;
+}
+
+.container {
+  width: 1200px;
+  margin: auto;
+}
+
+.btn-primary {
+  background: #4CAF4F;
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* =============================================
+   RESPONSIVE — global.css
+   ============================================= */
+
+@media (max-width: 768px) {
+  .container {
+    width: 100%;
+    padding: 0 16px;
+  }
+>>>>>>> fda8d720984b5de3d052d09b01f961bd82eea2d1
 }

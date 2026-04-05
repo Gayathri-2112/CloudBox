@@ -70,7 +70,11 @@ public class FileShareService {
             throw new RuntimeException("File is required");
         if (request.getRecipients() == null || request.getRecipients().isEmpty())
             throw new RuntimeException("At least one recipient is required");
-        
+
+
+        FileEntity file = fileRepository.findById(request.getFileId())
+                .orElseThrow(() -> new RuntimeException("File not found"));
+
         // Share with first recipient and return that response
         ShareRecipientDTO firstRecipient = request.getRecipients().get(0);
 

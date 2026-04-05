@@ -16,6 +16,14 @@ public interface FileRepository extends JpaRepository<FileEntity, Long> {
     // ✅ Count files per user (dashboard)
     long countByOwnerEmail(String email);
 
+
+    // ✅ Non-deleted files only
+    List<FileEntity> findByOwnerEmailAndDeletedFalse(String email);
+
+    // ✅ Trashed files
+    List<FileEntity> findByOwnerEmailAndDeletedTrue(String email);
+
+
     // ✅ Get all files (admin)
     List<FileEntity> findAll();
 

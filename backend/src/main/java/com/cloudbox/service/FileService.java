@@ -179,7 +179,11 @@ public class FileService {
     // 📂 USER FILES
     // =========================
     public List<FileEntity> getUserFiles(String email) {
-        return fileRepository.findByOwnerEmail(email);
+
+        return fileRepository.findByOwnerEmailAndDeletedFalse(email);
+
+
+
     }
 
     // =========================
@@ -338,8 +342,9 @@ public class FileService {
 
     // ── Get trash ──
     public List<FileEntity> getTrash(String userEmail) {
-        return fileRepository.findByOwnerEmail(userEmail).stream()
-                .filter(FileEntity::isDeleted).toList();
+
+        return fileRepository.findByOwnerEmailAndDeletedTrue(userEmail);
+
     }
 
     // ── Restore from trash ──

@@ -95,16 +95,21 @@ public class AuthService {
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             int attempts = user.getLoginAttempts() + 1;
             user.setLoginAttempts(attempts);
+
             if (attempts >= 5) {
                 user.setLockedUntil(java.time.LocalDateTime.now().plusMinutes(15));
                 user.setLoginAttempts(0);
                 userRepository.save(user);
                 systemEventService.log(user.getEmail(), "ACCOUNT_LOCKED",
                         "Account locked after 5 failed login attempts");
-                throw new RuntimeException("Too many failed attempts. Account locked for 15 minutes");
+
+                throw new RuntimeException("LOCKED:Account locked for 15 minutes due to too many failed attempts. Reset your password to regain access immediately.");
             }
+
             userRepository.save(user);
-            throw new RuntimeException("Invalid password. " + (5 - attempts) + " attempt(s) remaining");
+            int remaining = 5 - attempts;
+            throw new RuntimeException("ATTEMPTS_LEFT:" + remaining);
+
         }
 
         // Reset on successful login

@@ -73,7 +73,9 @@ function Notifications() {
 
           {!loading && notifications.length === 0 && (
             <div style={{ padding: "48px 20px", textAlign: "center" }}>
-              <i className="fa-solid fa-bell-slash" style={{ fontSize: 40, color: "#cbd5e1", marginBottom: 14, display: "block" }} />
+              <div style={{ fontSize: 44, color: "#cbd5e1", marginBottom: 14 }}>
+                <i className="fa-solid fa-bell-slash" />
+              </div>
               <p style={{ color: "#94a3b8", fontSize: 15, fontWeight: 500, margin: 0 }}>No notifications yet</p>
             </div>
           )}

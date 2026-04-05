@@ -36,6 +36,9 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import Kanban from "./pages/Kanban";
 
 import StorageUsed from "./pages/StorageUsed";
+
+import Trash from "./pages/Trash";
+
 import SharedFile from "./pages/SharedFile";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import { SearchProvider } from "./context/SearchContext";
@@ -244,6 +247,15 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["ADMIN"]}>
                 <AdminSettings />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/trash"
+            element={
+              <ProtectedRoute allowedRoles={["USER", "ADMIN"]}>
+                <Trash />
               </ProtectedRoute>
             }
           />

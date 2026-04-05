@@ -309,4 +309,71 @@ public class FileController {
         }
         return ResponseEntity.ok("Saved");
     }
+
+
+    // ── Trash / Restore / Empty Trash ──
+    @PutMapping("/{id}/trash")
+    public ResponseEntity<String> moveToTrash(@PathVariable Long id, Authentication auth) {
+        fileService.moveToTrash(id, auth.getName());
+        return ResponseEntity.ok("Moved to trash");
+    }
+
+    @GetMapping("/trash")
+    public ResponseEntity<List<FileEntity>> getTrash(Authentication auth) {
+        return ResponseEntity.ok(fileService.getTrash(auth.getName()));
+    }
+
+    @PutMapping("/{id}/restore")
+    public ResponseEntity<String> restoreFromTrash(@PathVariable Long id, Authentication auth) {
+        fileService.restoreFromTrash(id, auth.getName());
+        return ResponseEntity.ok("Restored");
+    }
+
+    @DeleteMapping("/trash/empty")
+    public ResponseEntity<String> emptyTrash(Authentication auth) throws Exception {
+        fileService.emptyTrash(auth.getName());
+        return ResponseEntity.ok("Trash emptied");
+    }
+
+    // ── Star / Unstar ──
+    @PutMapping("/{id}/star")
+    public ResponseEntity<String> toggleStar(@PathVariable Long id, Authentication auth) {
+        return ResponseEntity.ok(fileService.toggleStar(id, auth.getName()));
+    }
+
+    // ── Rename ──
+    @PutMapping("/{id}/rename")
+    public ResponseEntity<String> renameFile(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body,
+            Authentication auth) {
+        fileService.renameFile(id, body.get("newName"), auth.getName());
+        return ResponseEntity.ok("Renamed");
+    }
+
+    // ── Sort files ──
+    @GetMapping("/sorted")
+    public ResponseEntity<List<FileEntity>> getSortedFiles(
+            @RequestParam(defaultValue = "date") String sortBy,
+            @RequestParam(defaultValue = "desc") String order,
+            Authentication auth) {
+        List<FileEntity> files = fileService.getUserFiles(auth.getName());
+        files = new java.util.ArrayList<>(files);
+        java.util.Comparator<FileEntity> cmp = switch (sortBy) {
+            case "name" -> java.util.Comparator.comparing(f -> f.getFileName().toLowerCase());
+            case "size" -> java.util.Comparator.comparingLong(f -> f.getFileSize() != null ? f.getFileSize() : 0L);
+            default -> java.util.Comparator.comparing(f -> f.getUploadDate() != null ? f.getUploadDate() : java.time.LocalDateTime.MIN);
+        };
+        if ("desc".equalsIgnoreCase(order)) cmp = cmp.reversed();
+        files.sort(cmp);
+        return ResponseEntity.ok(files);
+    }
+
+    // ── Delete comment ──
+    @DeleteMapping("/collaboration/comment/{commentId}")
+    public ResponseEntity<String> deleteComment(@PathVariable Long commentId, Authentication auth) {
+        collaborationService.deleteComment(commentId, auth.getName());
+        return ResponseEntity.ok("Comment deleted");
+    }
+
 }
