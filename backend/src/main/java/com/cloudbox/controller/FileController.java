@@ -12,10 +12,12 @@ import com.cloudbox.dto.CollaborationCommentRequest;
 import com.cloudbox.dto.CollaborationFileDTO;
 import com.cloudbox.dto.PermissionFileMetadataDTO;
 import com.cloudbox.model.FileEntity;
+import com.cloudbox.repository.FileRepository;
 import com.cloudbox.service.CollaborationService;
 import com.cloudbox.service.FolderService;
 import com.cloudbox.service.FileShareService;
 import com.cloudbox.service.FileService;
+import com.cloudbox.service.LocalStorageService;
 import com.cloudbox.service.PermissionValidatorService;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
@@ -40,18 +42,24 @@ public class FileController {
     private final FolderService folderService;
     private final CollaborationService collaborationService;
     private final PermissionValidatorService permissionValidatorService;
+    private final LocalStorageService localStorageService;
+    private final FileRepository fileRepository;
 
     public FileController(
             FileService fileService,
             FileShareService fileShareService,
             FolderService folderService,
             CollaborationService collaborationService,
-            PermissionValidatorService permissionValidatorService) {
+            PermissionValidatorService permissionValidatorService,
+            LocalStorageService localStorageService,
+            FileRepository fileRepository) {
         this.fileService = fileService;
         this.fileShareService = fileShareService;
         this.folderService = folderService;
         this.collaborationService = collaborationService;
         this.permissionValidatorService = permissionValidatorService;
+        this.localStorageService = localStorageService;
+        this.fileRepository = fileRepository;
     }
 
     @PostMapping("/upload")
@@ -251,7 +259,7 @@ public class FileController {
         return ResponseEntity.ok(new FileViewInfoDTO(file.getFileUrl()));
     }
 
-    // ── Extract plain text from a DOCX for editing ──
+    // ΓöÇΓöÇ Extract plain text from a DOCX for editing ΓöÇΓöÇ
     @GetMapping("/docx-text/{id}")
     public ResponseEntity<Map<String, String>> getDocxText(
             @PathVariable Long id,
@@ -272,7 +280,7 @@ public class FileController {
         return ResponseEntity.ok(Map.of("text", sb.toString(), "fileName", file.getFileName()));
     }
 
-    // ── Save edited plain text back into the DOCX ──
+    // ΓöÇΓöÇ Save edited plain text back into the DOCX ΓöÇΓöÇ
     @PutMapping("/docx-text/{id}")
     public ResponseEntity<String> saveDocxText(
             @PathVariable Long id,
@@ -311,7 +319,7 @@ public class FileController {
     }
 
 
-    // ── Trash / Restore / Empty Trash ──
+    // ΓöÇΓöÇ Trash / Restore / Empty Trash ΓöÇΓöÇ
     @PutMapping("/{id}/trash")
     public ResponseEntity<String> moveToTrash(@PathVariable Long id, Authentication auth) {
         fileService.moveToTrash(id, auth.getName());
@@ -335,13 +343,13 @@ public class FileController {
         return ResponseEntity.ok("Trash emptied");
     }
 
-    // ── Star / Unstar ──
+    // ΓöÇΓöÇ Star / Unstar ΓöÇΓöÇ
     @PutMapping("/{id}/star")
     public ResponseEntity<String> toggleStar(@PathVariable Long id, Authentication auth) {
         return ResponseEntity.ok(fileService.toggleStar(id, auth.getName()));
     }
 
-    // ── Rename ──
+    // ΓöÇΓöÇ Rename ΓöÇΓöÇ
     @PutMapping("/{id}/rename")
     public ResponseEntity<String> renameFile(
             @PathVariable Long id,
@@ -351,7 +359,7 @@ public class FileController {
         return ResponseEntity.ok("Renamed");
     }
 
-    // ── Sort files ──
+    // ΓöÇΓöÇ Sort files ΓöÇΓöÇ
     @GetMapping("/sorted")
     public ResponseEntity<List<FileEntity>> getSortedFiles(
             @RequestParam(defaultValue = "date") String sortBy,
@@ -369,11 +377,36 @@ public class FileController {
         return ResponseEntity.ok(files);
     }
 
-    // ── Delete comment ──
+    // ΓöÇΓöÇ Delete comment ΓöÇΓöÇ
     @DeleteMapping("/collaboration/comment/{commentId}")
     public ResponseEntity<String> deleteComment(@PathVariable Long commentId, Authentication auth) {
         collaborationService.deleteComment(commentId, auth.getName());
         return ResponseEntity.ok("Comment deleted");
     }
 
+    @GetMapping("/last-modified/{id}")
+    public ResponseEntity<Map<String, Object>> lastModified(@PathVariable Long id, Authentication auth) {
+        FileEntity file = fileService.getFileIfAccessible(id, auth.getName());
+        return ResponseEntity.ok(Map.of(
+            "lastModifiedAt", file.getLastModifiedAt() != null ? file.getLastModifiedAt().toString() : "",
+            "fileSize", file.getSize() != null ? file.getSize() : 0L
+        ));
+    }
+
+    @GetMapping("/stream/{storageKey}")
+    public ResponseEntity<ByteArrayResource> streamFile(@PathVariable String storageKey) throws Exception {
+        var opt = fileRepository.findAll().stream()
+                .filter(f -> storageKey.equals(f.getStorageKey())).findFirst();
+        byte[] content = localStorageService.readFile(storageKey);
+        String ct = opt.map(FileEntity::getContentType)
+                .filter(s -> s != null && !s.isBlank())
+                .orElse(MediaType.APPLICATION_OCTET_STREAM_VALUE);
+        String name = opt.map(FileEntity::getFileName).orElse(storageKey);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(ct))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.inline().filename(name).build().toString())
+                .contentLength(content.length)
+                .body(new ByteArrayResource(content));
+    }
 }

@@ -40,6 +40,7 @@ import StorageUsed from "./pages/StorageUsed";
 import Trash from "./pages/Trash";
 
 import SharedFile from "./pages/SharedFile";
+import Plans from "./pages/Plans";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import { SearchProvider } from "./context/SearchContext";
 
@@ -274,6 +275,16 @@ function App() {
 
           {/* ================= PUBLIC SHARED FILE ================= */}
           <Route path="/shared/:token" element={<SharedFile />} />
+
+          {/* ================= PLANS ================= */}
+          <Route
+            path="/plans"
+            element={
+              <ProtectedRoute allowedRoles={["USER", "ADMIN"]}>
+                <Plans />
+              </ProtectedRoute>
+            }
+          />
 
           {/* ================= FALLBACK ================= */}
           <Route path="*" element={<h1>Page Not Found</h1>} />

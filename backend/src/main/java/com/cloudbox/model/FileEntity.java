@@ -1,8 +1,15 @@
 package com.cloudbox.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "files")
@@ -36,6 +43,7 @@ public class FileEntity {
     private boolean starred = false;
     private boolean deleted = false;
     private LocalDateTime deletedAt;
+    private LocalDateTime lastModifiedAt;
 
     public FileEntity() {
     }
@@ -142,4 +150,7 @@ public class FileEntity {
 
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+
+    public LocalDateTime getLastModifiedAt() { return lastModifiedAt; }
+    public void setLastModifiedAt(LocalDateTime lastModifiedAt) { this.lastModifiedAt = lastModifiedAt; }
 }

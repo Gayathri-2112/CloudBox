@@ -22,18 +22,21 @@ public class FileShareService {
     private final UserRepository userRepository;
     private final SystemEventService systemEventService;
     private final PermissionValidatorService permissionValidatorService;
+    private final EmailService emailService;
 
     public FileShareService(
             FileRepository fileRepository,
             FileShareRepository fileShareRepository,
             UserRepository userRepository,
             SystemEventService systemEventService,
-            PermissionValidatorService permissionValidatorService) {
+            PermissionValidatorService permissionValidatorService,
+            EmailService emailService) {
         this.fileRepository = fileRepository;
         this.fileShareRepository = fileShareRepository;
         this.userRepository = userRepository;
         this.systemEventService = systemEventService;
         this.permissionValidatorService = permissionValidatorService;
+        this.emailService = emailService;
     }
 
     public FileShareDTO shareFile(ShareFileRequest request, String ownerEmail) {
@@ -153,6 +156,7 @@ public class FileShareService {
                 recipient.getEmail(),
                 "File Shared With You",
                 ownerEmail + " shared " + file.getFileName() + " with permission " + permission);
+        emailService.sendFileShared(recipient.getEmail(), ownerEmail, file.getFileName(), permission);
 
         return mapToDto(savedShare);
     }

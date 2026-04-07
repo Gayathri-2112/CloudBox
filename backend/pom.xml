@@ -98,6 +98,19 @@
 <version>8.6.0</version>
 </dependency>
 
+<!-- Spring Mail (SMTP) -->
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-mail</artifactId>
+</dependency>
+
+<!-- Razorpay Java SDK -->
+<dependency>
+<groupId>com.razorpay</groupId>
+<artifactId>razorpay-java</artifactId>
+<version>1.4.5</version>
+</dependency>
+
 <!-- Test -->
 <dependency>
 <groupId>org.springframework.boot</groupId>

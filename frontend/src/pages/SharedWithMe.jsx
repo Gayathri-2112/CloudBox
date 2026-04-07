@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { renderAsync } from "docx-preview";
 import API from "../api/axiosConfig";
 import Layout from "../components/layout/Layout";
@@ -6,6 +6,7 @@ import Toast from "../components/common/Toast";
 import { useToast } from "../hooks/useToast";
 import { useSearch } from "../context/SearchContext";
 import { getDirectFileUrl, triggerDownload } from "../utils/fileAccess";
+import { useFileSync } from "../hooks/useFileSync";
 import "../styles/fileGrid.css";
 import "../styles/style.css";
 
@@ -33,6 +34,22 @@ function SharedWithMe() {
   const docxContainerRef = useRef(null);
 
   const search = query || localSearch;
+
+  // Auto-reload docx when a collaborator saves changes
+  const handleSyncUpdate = useCallback(async () => {
+    if (!viewer?.fileId || viewer.type !== "docx" || docxEditMode) return;
+    try {
+      const res = await API.get(`/files/preview/${viewer.fileId}`, { responseType: "arraybuffer" });
+      setViewer(prev => ({ ...prev, arrayBuffer: res.data }));
+      toast.info("Document updated by collaborator");
+    } catch {}
+  }, [viewer, docxEditMode]);
+
+  useFileSync({
+    fileId: viewer?.type === "docx" ? viewer.fileId : null,
+    active: !!viewer && viewer.type === "docx" && !docxEditMode,
+    onUpdate: handleSyncUpdate,
+  });
 
   useEffect(() => { fetchShares(); }, []);
 

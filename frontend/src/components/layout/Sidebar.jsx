@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   FaHome, FaFolder, FaUpload, FaShareAlt, FaUsers,
-  FaBell, FaCog, FaHistory, FaSignOutAlt, FaTrash, FaStar
+  FaBell, FaCog, FaHistory, FaSignOutAlt, FaTrash, FaCreditCard
 } from "react-icons/fa";
 import CloudBoxLogo from "../CloudBoxLogo";
 import "./layout.css";
@@ -29,8 +29,9 @@ function Sidebar({ type, isOpen, onClose }) {
     { name: "My Folders", path: "/folders", icon: <FaFolder /> },
     { name: "Collaboration", path: "/collab", icon: <FaUsers /> },
     { name: "Activity History", path: "/activity", icon: <FaHistory /> },
-    { name: "Trash", path: "/trash", icon: <FaTrash /> },
-    { name: "Settings", path: "/settings", icon: <FaCog /> },
+    { name: "Trash",            path: "/trash",    icon: <FaTrash /> },
+    { name: "Plans & Billing",  path: "/plans",    icon: <FaCreditCard /> },
+    { name: "Settings",         path: "/settings", icon: <FaCog /> },
   ];
 
   const adminMenu = [

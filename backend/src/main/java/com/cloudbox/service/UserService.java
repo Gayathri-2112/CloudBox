@@ -138,6 +138,7 @@ public class UserService {
         dto.setGender(user.getGender());
         dto.setAge(user.getAge());
         dto.setLocation(user.getLocation());
+        dto.setPlan(user.getPlan() != null ? user.getPlan().name() : "FREE");
 
         return dto;
     }

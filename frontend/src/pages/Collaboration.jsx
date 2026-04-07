@@ -1,10 +1,11 @@
-﻿import { useEffect, useState, useRef } from "react";
+﻿import { useEffect, useState, useRef, useCallback } from "react";
 import { renderAsync } from "docx-preview";
 import API from "../api/axiosConfig";
 import Layout from "../components/layout/Layout";
 import Toast from "../components/common/Toast";
 import { useToast } from "../hooks/useToast";
 import { getDirectFileUrl } from "../utils/fileAccess";
+import { useFileSync } from "../hooks/useFileSync";
 import "../styles/collaboration.css";
 import "../styles/style.css";
 
@@ -173,6 +174,22 @@ export default function Collaboration() {
     setDocxEditMode(false);
     setDocxEditText("");
   }
+
+  // Auto-reload docx when another collaborator saves
+  const handleSyncUpdate = useCallback(async () => {
+    if (!viewer?.fileId || viewer.type !== "docx" || docxEditMode) return;
+    try {
+      const res = await API.get(`/files/preview/${viewer.fileId}`, { responseType: "arraybuffer" });
+      setViewer(prev => ({ ...prev, arrayBuffer: res.data }));
+      toast.info("Document updated by a collaborator");
+    } catch {}
+  }, [viewer, docxEditMode]);
+
+  useFileSync({
+    fileId: viewer?.type === "docx" ? viewer.fileId : null,
+    active: !!viewer && viewer.type === "docx" && !docxEditMode,
+    onUpdate: handleSyncUpdate,
+  });
 
   // render docx when viewer opens or switches back to view mode
   useEffect(() => {

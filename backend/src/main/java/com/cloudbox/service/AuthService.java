@@ -20,19 +20,19 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final AdminSettingRepository adminSettingRepository;
     private final SystemEventService systemEventService;
+    private final EmailService emailService;
 
-    // ✅ Password encoder
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    public AuthService(
-            UserRepository userRepository,
-            JwtUtil jwtUtil,
+    public AuthService(UserRepository userRepository, JwtUtil jwtUtil,
             AdminSettingRepository adminSettingRepository,
-            SystemEventService systemEventService) {
+            SystemEventService systemEventService,
+            EmailService emailService) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
         this.adminSettingRepository = adminSettingRepository;
         this.systemEventService = systemEventService;
+        this.emailService = emailService;
     }
 
     // ✅ REGISTER
@@ -71,7 +71,7 @@ public class AuthService {
         userRepository.save(user);
         systemEventService.log(user.getEmail(), "REGISTER", "New user registered");
         systemEventService.notifyAdmins("New User Registration", user.getEmail() + " created a new account");
-
+        emailService.sendWelcome(user.getEmail(), user.getFirstName());
         return "User registered successfully";
     }
 
@@ -139,6 +139,7 @@ public class AuthService {
         userRepository.save(user);
         systemEventService.log(user.getEmail(), "PASSWORD_RESET", "User reset password");
         systemEventService.notifyAdmins("Password Reset", user.getEmail() + " reset their account password");
+        emailService.sendPasswordReset(user.getEmail(), user.getFirstName());
 
         return "Password reset successfully";
     }

@@ -28,8 +28,9 @@ public class User {
     private int loginAttempts = 0;
     private java.time.LocalDateTime lockedUntil;
 
-    // Storage limit in MB for this user; if null or zero, default system-wide limit
-    // is used.
+    @Enumerated(EnumType.STRING)
+    private Plan plan = Plan.FREE;
+
     private Long storageLimitMb;
 
     public int getLoginAttempts() {
@@ -127,11 +128,9 @@ public class User {
         this.suspended = suspended;
     }
 
-    public Long getStorageLimitMb() {
-        return storageLimitMb;
-    }
+    public Long getStorageLimitMb() { return storageLimitMb; }
+    public void setStorageLimitMb(Long storageLimitMb) { this.storageLimitMb = storageLimitMb; }
 
-    public void setStorageLimitMb(Long storageLimitMb) {
-        this.storageLimitMb = storageLimitMb;
-    }
+    public Plan getPlan() { return plan; }
+    public void setPlan(Plan plan) { this.plan = plan; }
 }
