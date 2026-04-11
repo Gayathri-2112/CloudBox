@@ -1,8 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   FaHome, FaFolder, FaUpload, FaShareAlt, FaUsers,
-  FaBell, FaCog, FaHistory, FaSignOutAlt, FaTrash,
-  FaCreditCard, FaBars, FaTimes
+  FaBell, FaCog, FaHistory, FaSignOutAlt, FaTrash, FaCreditCard
 } from "react-icons/fa";
 import CloudBoxLogo from "../CloudBoxLogo";
 import "./layout.css";
@@ -12,25 +11,21 @@ function Sidebar({ type, collapsed, onToggle }) {
   const navigate = useNavigate();
 
   const handleNav = (path) => navigate(path);
-
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/login");
-  };
+  const handleLogout = () => { localStorage.clear(); navigate("/login"); };
 
   const userMenu = [
-    { name: "Dashboard",       path: "/dashboard",   icon: <FaHome /> },
-    { name: "My Files",        path: "/files",        icon: <FaFolder /> },
-    { name: "Upload File",     path: "/upload",       icon: <FaUpload /> },
-    { name: "Notifications",   path: "/notifications",icon: <FaBell /> },
-    { name: "Shared With Me",  path: "/shared-with",  icon: <FaShareAlt /> },
-    { name: "Shared By Me",    path: "/shared-by",    icon: <FaShareAlt /> },
-    { name: "My Folders",      path: "/folders",      icon: <FaFolder /> },
-    { name: "Collaboration",   path: "/collab",       icon: <FaUsers /> },
-    { name: "Activity History",path: "/activity",     icon: <FaHistory /> },
-    { name: "Trash",           path: "/trash",        icon: <FaTrash /> },
-    { name: "Plans & Billing", path: "/plans",        icon: <FaCreditCard /> },
-    { name: "Settings",        path: "/settings",     icon: <FaCog /> },
+    { name: "Dashboard",       path: "/dashboard",    icon: <FaHome /> },
+    { name: "My Files",        path: "/files",         icon: <FaFolder /> },
+    { name: "Upload File",     path: "/upload",        icon: <FaUpload /> },
+    { name: "Notifications",   path: "/notifications", icon: <FaBell /> },
+    { name: "Shared With Me",  path: "/shared-with",   icon: <FaShareAlt /> },
+    { name: "Shared By Me",    path: "/shared-by",     icon: <FaShareAlt /> },
+    { name: "My Folders",      path: "/folders",       icon: <FaFolder /> },
+    { name: "Collaboration",   path: "/collab",        icon: <FaUsers /> },
+    { name: "Activity History",path: "/activity",      icon: <FaHistory /> },
+    { name: "Trash",           path: "/trash",         icon: <FaTrash /> },
+    { name: "Plans & Billing", path: "/plans",         icon: <FaCreditCard /> },
+    { name: "Settings",        path: "/settings",      icon: <FaCog /> },
   ];
 
   const adminMenu = [
@@ -49,11 +44,6 @@ function Sidebar({ type, collapsed, onToggle }) {
 
   return (
     <div className={`sidebar${isAdmin ? " sidebar-admin" : ""}${collapsed ? " sidebar-collapsed" : ""}`}>
-
-      {/* Toggle button */}
-      <button className="sidebar-toggle" onClick={onToggle} title={collapsed ? "Expand menu" : "Collapse menu"}>
-        {collapsed ? <FaBars /> : <FaTimes />}
-      </button>
 
       {/* Logo — hidden when collapsed */}
       {!collapsed && (
