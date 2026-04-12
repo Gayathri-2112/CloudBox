@@ -38,6 +38,17 @@ export function Hero() {
     <section className="hero">
       <div className="hero-orb hero-orb-1" />
       <div className="hero-orb hero-orb-2" />
+
+      {/* Hero image — full-width behind content */}
+      <div className="hero-image-wrap">
+        <img
+          src="/hero-cloud.webp"
+          alt="CloudBox data center"
+          className="hero-bg-img"
+        />
+        <div className="hero-img-overlay" />
+      </div>
+
       <div className="hero-content">
         <div className="hero-badge">
           <span className="hero-badge-dot" />

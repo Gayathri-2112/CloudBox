@@ -157,6 +157,8 @@ public class FileShareService {
                 "File Shared With You",
                 ownerEmail + " shared " + file.getFileName() + " with permission " + permission);
         emailService.sendFileShared(recipient.getEmail(), ownerEmail, file.getFileName(), permission);
+        emailService.sendShareConfirmation(ownerEmail, ownerEmail.split("@")[0],
+                file.getFileName(), recipient.getEmail(), permission);
 
         return mapToDto(savedShare);
     }
