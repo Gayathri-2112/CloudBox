@@ -68,6 +68,8 @@ export default function Plans() {
   const [currentPlan, setCurrentPlan] = useState("FREE");
   const [usedBytes, setUsedBytes] = useState(0);
   const [loading, setLoading] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const userEmail = localStorage.getItem("email") || "";
   const userName = localStorage.getItem("name") || "User";
 
@@ -88,6 +90,13 @@ export default function Plans() {
       const res = await API.post("/payment/create-order", { plan: plan.key });
       const { orderId, amount, currency, keyId } = res.data;
 
+      // Dev/test mode: if no real Razorpay key, simulate payment directly
+      if (!keyId || keyId.startsWith("rzp_test_") && res.data.simulated) {
+        toast.success("Payment received! Your " + plan.name + " plan is pending admin approval.");
+        setLoading(null);
+        return;
+      }
+
       const options = {
         key: keyId,
         amount: amount,
@@ -104,9 +113,8 @@ export default function Plans() {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
             });
-            toast.success("Payment successful! " + plan.name + " plan activated.");
-            setCurrentPlan(plan.key);
-            setTimeout(() => navigate("/dashboard"), 2000);
+            toast.success("Payment received! Your " + plan.name + " plan is pending admin approval.");
+            setLoading(null);
           } catch {
             toast.error("Payment verification failed. Contact support.");
           }
@@ -123,6 +131,20 @@ export default function Plans() {
     } catch (err) {
       toast.error(err.response?.data || "Failed to initiate payment");
       setLoading(null);
+    }
+  };
+
+  const cancelPlan = async () => {
+    setCancelling(true);
+    try {
+      await API.post("/user/cancel-plan");
+      setCurrentPlan("FREE");
+      setConfirmCancel(false);
+      toast.success("Plan cancelled. You've been moved back to the Free plan.");
+    } catch (e) {
+      toast.error(e.response?.data || "Failed to cancel plan");
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -151,6 +173,15 @@ export default function Plans() {
             <div className="plan-usage-storage">
               {formatBytes(usedBytes)} used of {currentPlanData.storage}
             </div>
+            {currentPlan !== "FREE" && (
+              <button
+                className="btn btn-danger btn-sm"
+                style={{ marginTop: 12, fontSize: 12 }}
+                onClick={() => setConfirmCancel(true)}
+              >
+                <i className="fa-solid fa-xmark" style={{ marginRight: 6 }}></i>Cancel Plan
+              </button>
+            )}
           </div>
           <div className="plan-usage-bar-wrap">
             <div className="plan-usage-bar">
@@ -162,6 +193,23 @@ export default function Plans() {
             <div className="plan-usage-pct">{usedPct.toFixed(1)}% used</div>
           </div>
         </div>
+
+        {/* Confirm cancel dialog */}
+        {confirmCancel && (
+          <div className="viewer-modal" onClick={() => setConfirmCancel(false)}>
+            <div className="confirm-dialog" onClick={e => e.stopPropagation()}>
+              <i className="fa-solid fa-triangle-exclamation confirm-icon"></i>
+              <h3>Cancel {currentPlanData.name} Plan?</h3>
+              <p>You'll be moved back to the Free plan (15 GB). Your files won't be deleted, but you won't be able to upload more if you're over 15 GB.</p>
+              <div className="confirm-actions">
+                <button className="btn btn-danger" onClick={cancelPlan} disabled={cancelling}>
+                  {cancelling ? <><i className="fa-solid fa-spinner fa-spin"></i> Cancelling…</> : "Yes, Cancel Plan"}
+                </button>
+                <button className="btn btn-secondary" onClick={() => setConfirmCancel(false)}>Keep Plan</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Plan cards */}
         <div className="plans-grid">

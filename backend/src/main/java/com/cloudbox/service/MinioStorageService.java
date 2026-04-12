@@ -113,6 +113,26 @@ public class MinioStorageService {
         if (!bucketExists) {
             minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
         }
+
+        // Set public read policy so direct URLs work
+        String policy = "{"
+                + "\"Version\":\"2012-10-17\","
+                + "\"Statement\":[{"
+                + "\"Effect\":\"Allow\","
+                + "\"Principal\":{\"AWS\":[\"*\"]},"
+                + "\"Action\":[\"s3:GetObject\"],"
+                + "\"Resource\":[\"arn:aws:s3:::" + bucketName + "/*\"]"
+                + "}]"
+                + "}";
+        try {
+            minioClient.setBucketPolicy(
+                io.minio.SetBucketPolicyArgs.builder()
+                    .bucket(bucketName)
+                    .config(policy)
+                    .build());
+        } catch (Exception ignored) {
+            // Policy may already be set or not supported — non-fatal
+        }
     }
 
     private String buildObjectName(String originalFilename) {

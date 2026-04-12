@@ -67,4 +67,9 @@ public class UserController {
     public java.util.Map<String, Long> getStorageInfo(Principal principal) {
         return userService.getStorageInfo(principal.getName());
     }
+
+    @PostMapping("/cancel-plan")
+    public UserProfileDTO cancelPlan(Principal principal) {
+        return userService.cancelPlan(principal.getName());
+    }
 }

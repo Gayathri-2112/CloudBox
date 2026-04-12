@@ -116,6 +116,22 @@ public class UserService {
         return Map.of("usedBytes", used, "limitMb", limitMb);
     }
 
+    @Transactional
+    public UserProfileDTO cancelPlan(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getPlan() == null || user.getPlan().name().equals("FREE"))
+            throw new RuntimeException("You are already on the FREE plan");
+
+        user.setPlan(com.cloudbox.model.Plan.FREE);
+        user.setStorageLimitMb(15360L); // reset to 15 GB
+        userRepository.save(user);
+
+        systemEventService.log(email, "CANCEL_PLAN", "Cancelled plan, reverted to FREE");
+        return mapToDTO(user);
+    }
+
     private boolean isCollaborationAction(String action) {
         if (action == null) {
             return false;

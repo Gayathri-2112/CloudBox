@@ -179,3 +179,19 @@
   border: 1.5px solid #d0daea; font-size: 13px;
   font-family: inherit; color: #1a2236; background: #fff;
 }
+
+/* ── share link via email row (inside link modal) ── */
+.link-email-row {
+  padding: 14px;
+  background: #f0f7ff;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid #c7ddf9;
+  margin-top: 4px;
+}
+
+.link-email-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a2236;
+  margin-bottom: 6px;
+}

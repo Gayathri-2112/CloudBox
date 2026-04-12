@@ -17,7 +17,7 @@ import com.cloudbox.service.CollaborationService;
 import com.cloudbox.service.FolderService;
 import com.cloudbox.service.FileShareService;
 import com.cloudbox.service.FileService;
-import com.cloudbox.service.LocalStorageService;
+import com.cloudbox.service.MinioStorageService;
 import com.cloudbox.service.PermissionValidatorService;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
@@ -32,6 +32,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.List;
 import java.util.Map;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 @RestController
 @RequestMapping("/api/files")
@@ -42,7 +44,7 @@ public class FileController {
     private final FolderService folderService;
     private final CollaborationService collaborationService;
     private final PermissionValidatorService permissionValidatorService;
-    private final LocalStorageService localStorageService;
+    private final MinioStorageService storageService;
     private final FileRepository fileRepository;
 
     public FileController(
@@ -51,14 +53,14 @@ public class FileController {
             FolderService folderService,
             CollaborationService collaborationService,
             PermissionValidatorService permissionValidatorService,
-            LocalStorageService localStorageService,
+            MinioStorageService storageService,
             FileRepository fileRepository) {
         this.fileService = fileService;
         this.fileShareService = fileShareService;
         this.folderService = folderService;
         this.collaborationService = collaborationService;
         this.permissionValidatorService = permissionValidatorService;
-        this.localStorageService = localStorageService;
+        this.storageService = storageService;
         this.fileRepository = fileRepository;
     }
 
@@ -83,9 +85,16 @@ public class FileController {
             @PathVariable Long id,
             Authentication auth) throws Exception {
         FileEntity file = fileService.getFileForDownload(id, auth.getName());
-        byte[] content = fileService.getFileContent(id, auth.getName());
-        String contentType = file.getContentType();
 
+        String key = file.getStorageKey();
+        if (key == null || key.isBlank()) {
+            String url = file.getFileUrl();
+            if (url != null && url.contains("/")) key = url.substring(url.lastIndexOf("/") + 1);
+        }
+        if (key == null || key.isBlank()) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+
+        byte[] content = storageService.getFileBytes(key);
+        String contentType = file.getContentType();
         if (contentType == null || contentType.isBlank()) {
             contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
         }
@@ -236,10 +245,31 @@ public class FileController {
 
         String email = auth.getName();
         FileEntity file = fileService.getFileIfAccessible(id, email);
-        byte[] content = fileService.getFileContent(id, email);
-        String contentType = file.getContentType();
 
-        if (contentType == null || contentType.isBlank()) {
+        // Use MinioStorageService directly — resolves storageKey to MinIO object
+        String key = file.getStorageKey();
+        if (key == null || key.isBlank()) {
+            // fallback: extract key from fileUrl
+            String url = file.getFileUrl();
+            if (url != null && url.contains("/")) {
+                key = url.substring(url.lastIndexOf("/") + 1);
+            }
+        }
+        if (key == null || key.isBlank()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        byte[] content = storageService.getFileBytes(key);
+
+        String contentType = file.getContentType();
+        if (contentType == null || contentType.isBlank() || contentType.equals("application/octet-stream")) {
+            try {
+                contentType = Files.probeContentType(Path.of(file.getFileName()));
+            } catch (Exception e) {
+                contentType = null;
+            }
+        }
+        if (contentType == null) {
             contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
         }
 
@@ -259,7 +289,7 @@ public class FileController {
         return ResponseEntity.ok(new FileViewInfoDTO(file.getFileUrl()));
     }
 
-    // ΓöÇΓöÇ Extract plain text from a DOCX for editing ΓöÇΓöÇ
+    // ── Extract plain text from a DOCX for editing ──
     @GetMapping("/docx-text/{id}")
     public ResponseEntity<Map<String, String>> getDocxText(
             @PathVariable Long id,
@@ -270,8 +300,11 @@ public class FileController {
             return ResponseEntity.badRequest().build();
         }
 
+        String key = resolveStorageKey(file);
+        if (key == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+
         StringBuilder sb = new StringBuilder();
-        byte[] fileBytes = fileService.getFileContent(id, auth.getName());
+        byte[] fileBytes = storageService.getFileBytes(key);
         try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(fileBytes))) {
             for (XWPFParagraph p : doc.getParagraphs()) {
                 sb.append(p.getText()).append("\n");
@@ -280,7 +313,7 @@ public class FileController {
         return ResponseEntity.ok(Map.of("text", sb.toString(), "fileName", file.getFileName()));
     }
 
-    // ΓöÇΓöÇ Save edited plain text back into the DOCX ΓöÇΓöÇ
+    // ── Save edited plain text back into the DOCX ──
     @PutMapping("/docx-text/{id}")
     public ResponseEntity<String> saveDocxText(
             @PathVariable Long id,
@@ -295,12 +328,14 @@ public class FileController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You do not have edit permission for this file");
         }
 
+        String key = resolveStorageKey(file);
+        if (key == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+
         String newText = body.getOrDefault("text", "");
         String[] lines = newText.split("\n", -1);
 
-        byte[] fileBytes = fileService.getFileContent(id, auth.getName());
+        byte[] fileBytes = storageService.getFileBytes(key);
         try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(fileBytes))) {
-            // Clear existing paragraphs
             int size = doc.getParagraphs().size();
             for (int i = size - 1; i >= 0; i--) {
                 doc.removeBodyElement(doc.getPosOfParagraph(doc.getParagraphs().get(i)));
@@ -312,10 +347,17 @@ public class FileController {
             }
             try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
                 doc.write(out);
-                fileService.replaceFileContent(id, auth.getName(), out.toByteArray(), file.getContentType());
+                storageService.replaceFile(key, out.toByteArray(), file.getContentType());
             }
         }
         return ResponseEntity.ok("Saved");
+    }
+
+    private String resolveStorageKey(FileEntity file) {
+        if (file.getStorageKey() != null && !file.getStorageKey().isBlank()) return file.getStorageKey();
+        String url = file.getFileUrl();
+        if (url != null && url.contains("/")) return url.substring(url.lastIndexOf("/") + 1);
+        return null;
     }
 
 
@@ -338,12 +380,16 @@ public class FileController {
     }
 
     @DeleteMapping("/trash/empty")
-    public ResponseEntity<String> emptyTrash(Authentication auth) throws Exception {
-        fileService.emptyTrash(auth.getName());
-        return ResponseEntity.ok("Trash emptied");
+    public ResponseEntity<String> emptyTrash(Authentication auth) {
+        try {
+            fileService.emptyTrash(auth.getName());
+            return ResponseEntity.ok("Trash emptied");
+        } catch (Exception e) {
+            e.printStackTrace(); // 🔥 IMPORTANT
+            return ResponseEntity.status(500).body("Error emptying trash");
+        }
     }
 
-    // ΓöÇΓöÇ Star / Unstar ΓöÇΓöÇ
     @PutMapping("/{id}/star")
     public ResponseEntity<String> toggleStar(@PathVariable Long id, Authentication auth) {
         return ResponseEntity.ok(fileService.toggleStar(id, auth.getName()));
@@ -397,7 +443,7 @@ public class FileController {
     public ResponseEntity<ByteArrayResource> streamFile(@PathVariable String storageKey) throws Exception {
         var opt = fileRepository.findAll().stream()
                 .filter(f -> storageKey.equals(f.getStorageKey())).findFirst();
-        byte[] content = localStorageService.readFile(storageKey);
+        byte[] content = storageService.getFileBytes(storageKey);
         String ct = opt.map(FileEntity::getContentType)
                 .filter(s -> s != null && !s.isBlank())
                 .orElse(MediaType.APPLICATION_OCTET_STREAM_VALUE);

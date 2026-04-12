@@ -73,11 +73,11 @@ function SharedWithMe() {
 
   const downloadFile = async (share) => {
     try {
-      const directUrl = getDirectFileUrl(share);
-      if (!directUrl) {
-        throw new Error("Missing file URL");
-      }
-      triggerDownload(directUrl, share.fileName);
+      const res = await API.get(`/files/download/${share.fileId}`, { responseType: "blob" });
+      const url = URL.createObjectURL(new Blob([res.data], { type: res.headers["content-type"] }));
+      const a = document.createElement("a");
+      a.href = url; a.download = share.fileName; a.click();
+      URL.revokeObjectURL(url);
     } catch {
       toast.error("Download failed");
     }

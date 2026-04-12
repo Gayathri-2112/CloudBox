@@ -35,8 +35,8 @@ public class PublicLinkService {
             throw new RuntimeException("Only the file owner can create public links");
 
         String perm = (permission == null || permission.isBlank()) ? "VIEW" : permission.toUpperCase();
-        if (!perm.equals("VIEW") && !perm.equals("DOWNLOAD"))
-            throw new RuntimeException("Permission must be VIEW or DOWNLOAD");
+        if (!perm.equals("VIEW") && !perm.equals("DOWNLOAD") && !perm.equals("EDIT"))
+            throw new RuntimeException("Permission must be VIEW, DOWNLOAD or EDIT");
 
         String token = UUID.randomUUID().toString().replace("-", "");
 
@@ -80,5 +80,19 @@ public class PublicLinkService {
         linkRepository.delete(link);
         systemEventService.log(ownerEmail, "REVOKE_PUBLIC_LINK",
                 "Revoked public link for " + link.getFile().getFileName());
+    }
+
+    public void updateLinkPermission(String token, String ownerEmail, String newPermission) {
+        PublicFileLink link = linkRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Link not found"));
+        if (!link.getOwnerEmail().equals(ownerEmail))
+            throw new RuntimeException("Unauthorized");
+        String perm = newPermission.toUpperCase();
+        if (!perm.equals("VIEW") && !perm.equals("DOWNLOAD") && !perm.equals("EDIT"))
+            throw new RuntimeException("Permission must be VIEW, DOWNLOAD or EDIT");
+        link.setPermission(perm);
+        linkRepository.save(link);
+        systemEventService.log(ownerEmail, "UPDATE_PUBLIC_LINK_PERMISSION",
+                "Updated public link permission for " + link.getFile().getFileName() + " to " + perm);
     }
 }

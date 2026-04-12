@@ -62,10 +62,43 @@ public class PaymentService {
 
         if (amount == 0) throw new RuntimeException("FREE plan requires no payment");
 
-        if (keyId == null || keyId.startsWith("your_") || keyId.isBlank()) {
-            throw new RuntimeException("Razorpay API keys not configured. Add razorpay.key.id and razorpay.key.secret to application.properties");
+        if (keyId == null || keyId.isBlank() || keyId.startsWith("your_")) {
+            throw new RuntimeException("Razorpay API keys not configured.");
         }
 
+        // ── Simulated mode for test/dev (no real Razorpay call) ──
+        if (keyId.startsWith("rzp_test_")) {
+            String fakeOrderId = "order_sim_" + System.currentTimeMillis();
+            String fakePaymentId = "pay_sim_" + System.currentTimeMillis();
+
+            Payment payment = new Payment();
+            payment.setUserEmail(userEmail);
+            payment.setRazorpayOrderId(fakeOrderId);
+            payment.setRazorpayPaymentId(fakePaymentId);
+            payment.setRazorpaySignature("simulated");
+            payment.setPlan(plan);
+            payment.setAmountPaise(amount);
+            payment.setStatus("PENDING_APPROVAL");
+            payment.setCreatedAt(LocalDateTime.now());
+            payment.setPaidAt(LocalDateTime.now());
+            paymentRepository.save(payment);
+
+            systemEventService.log(userEmail, "PAYMENT_PENDING",
+                    "Simulated payment for " + plan + " plan — awaiting admin approval");
+            systemEventService.notifyAdmins("Payment Pending Approval",
+                    userEmail + " requested " + plan + " plan — please review and approve");
+
+            return Map.of(
+                "orderId", fakeOrderId,
+                "amount", amount,
+                "currency", "INR",
+                "keyId", keyId,
+                "plan", planName,
+                "simulated", true
+            );
+        }
+
+        // ── Real Razorpay flow ──
         RazorpayClient client = new RazorpayClient(keyId, keySecret);
         JSONObject opts = new JSONObject();
         opts.put("amount", amount);
@@ -89,7 +122,8 @@ public class PaymentService {
             "amount", amount,
             "currency", "INR",
             "keyId", keyId,
-            "plan", planName
+            "plan", planName,
+            "simulated", false
         );
     }
 
@@ -109,22 +143,65 @@ public class PaymentService {
 
         payment.setRazorpayPaymentId(paymentId);
         payment.setRazorpaySignature(signature);
-        payment.setStatus("PAID");
+        payment.setStatus("PENDING_APPROVAL");
         payment.setPaidAt(LocalDateTime.now());
         paymentRepository.save(payment);
 
+        // Notify admins to review
+        systemEventService.log(userEmail, "PAYMENT_PENDING",
+                "Payment received for " + payment.getPlan() + " plan — awaiting admin approval");
+        systemEventService.notifyAdmins("Payment Pending Approval",
+                userEmail + " paid for " + payment.getPlan() + " plan — please review and approve");
+    }
+
+    public List<Payment> getPendingPayments() {
+        return paymentRepository.findByStatusOrderByCreatedAtDesc("PENDING_APPROVAL");
+    }
+
+    public List<Payment> getAllPayments() {
+        return paymentRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    public void approvePayment(Long paymentId, String adminEmail) {
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new RuntimeException("Payment not found"));
+        if (!"PENDING_APPROVAL".equals(payment.getStatus()))
+            throw new RuntimeException("Payment is not pending approval");
+
+        payment.setStatus("APPROVED");
+        paymentRepository.save(payment);
+
         // Upgrade user plan and storage
-        User user = userRepository.findByEmail(userEmail)
+        User user = userRepository.findByEmail(payment.getUserEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setPlan(payment.getPlan());
         user.setStorageLimitMb(PLAN_STORAGE.get(payment.getPlan()));
         userRepository.save(user);
 
-        systemEventService.log(userEmail, "PAYMENT_SUCCESS",
-                "Upgraded to " + payment.getPlan() + " plan");
+        systemEventService.log(adminEmail, "APPROVE_PAYMENT",
+                "Approved " + payment.getPlan() + " plan for " + payment.getUserEmail());
+        systemEventService.notifyAdmins("Payment Approved",
+                adminEmail + " approved " + payment.getPlan() + " for " + payment.getUserEmail());
+        systemEventService.notifyUser(payment.getUserEmail(), "Plan Activated",
+                "Your " + payment.getPlan() + " plan has been activated by admin.");
 
-        emailService.sendPaymentSuccess(userEmail, user.getFirstName(),
+        emailService.sendPaymentSuccess(payment.getUserEmail(), user.getFirstName(),
                 payment.getPlan().name(), payment.getAmountPaise());
+    }
+
+    public void rejectPayment(Long paymentId, String adminEmail) {
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new RuntimeException("Payment not found"));
+        if (!"PENDING_APPROVAL".equals(payment.getStatus()))
+            throw new RuntimeException("Payment is not pending approval");
+
+        payment.setStatus("REJECTED");
+        paymentRepository.save(payment);
+
+        systemEventService.log(adminEmail, "REJECT_PAYMENT",
+                "Rejected payment for " + payment.getPlan() + " plan from " + payment.getUserEmail());
+        systemEventService.notifyUser(payment.getUserEmail(), "Payment Rejected",
+                "Your payment for " + payment.getPlan() + " plan was rejected. Please contact support.");
     }
 
     public List<Payment> getUserPayments(String userEmail) {

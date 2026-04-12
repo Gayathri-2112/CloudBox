@@ -7,6 +7,7 @@ import com.cloudbox.model.User;
 import com.cloudbox.repository.AdminSettingRepository;
 import com.cloudbox.repository.CollaborationCommentRepository;
 import com.cloudbox.repository.FileRepository;
+import com.cloudbox.repository.PublicFileLinkRepository;
 import com.cloudbox.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +27,9 @@ public class FileService {
     private final SystemEventService systemEventService;
     private final FileShareService fileShareService;
     private final FolderService folderService;
-    private final LocalStorageService storageService;
+    private final MinioStorageService storageService;
+    private final EmailService emailService;
+    private final PublicFileLinkRepository publicLinkRepository;
 
     public FileService(
             FileRepository fileRepository,
@@ -36,7 +39,9 @@ public class FileService {
             SystemEventService systemEventService,
             FileShareService fileShareService,
             FolderService folderService,
-            LocalStorageService storageService) {
+            MinioStorageService storageService,
+            EmailService emailService,
+            PublicFileLinkRepository publicLinkRepository) {
         this.fileRepository = fileRepository;
         this.userRepository = userRepository;
         this.collaborationCommentRepository = collaborationCommentRepository;
@@ -45,6 +50,8 @@ public class FileService {
         this.fileShareService = fileShareService;
         this.folderService = folderService;
         this.storageService = storageService;
+        this.emailService = emailService;
+        this.publicLinkRepository = publicLinkRepository;
     }
 
     // ── Upload ──
@@ -74,11 +81,11 @@ public class FileService {
                     (currentUsage / (1024 * 1024)) + " MB of " + limitMb + " MB.");
         }
 
-        LocalStorageService.StoredFile stored = storageService.uploadFile(file);
+        MinioStorageService.StoredFile stored = storageService.uploadFile(file);
 
         FileEntity entity = new FileEntity();
         entity.setFileName(file.getOriginalFilename());
-        entity.setStorageKey(stored.storageKey());
+        entity.setStorageKey(stored.fileName());
         entity.setFileUrl(stored.fileUrl());
         entity.setContentType(file.getContentType());
         entity.setSize(file.getSize());
@@ -89,6 +96,11 @@ public class FileService {
         FileEntity saved = fileRepository.save(entity);
         systemEventService.log(userEmail, "UPLOAD_FILE", "Uploaded " + saved.getFileName());
         systemEventService.notifyAdmins("File Uploaded", userEmail + " uploaded " + saved.getFileName());
+
+        // Send upload confirmation email
+        String sizeLabel = formatSize(file.getSize());
+        emailService.sendFileUploaded(userEmail, user.getFirstName(), saved.getFileName(), sizeLabel, folder);
+
         return saved;
     }
 
@@ -123,13 +135,24 @@ public class FileService {
     public void deleteFile(Long fileId, String userEmail) throws IOException {
         FileEntity file = fileRepository.findById(fileId)
                 .orElseThrow(() -> new RuntimeException("File not found"));
+
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
         if (!file.getOwnerEmail().equals(userEmail) && user.getRole() != Role.ADMIN)
             throw new RuntimeException("Unauthorized");
+
+        try { publicLinkRepository.deleteAll(publicLinkRepository.findByFileId(fileId)); } catch (Exception ignored) {}
         fileShareService.deleteSharesForFile(fileId);
         collaborationCommentRepository.deleteByFileId(fileId);
-        storageService.deleteFile(resolveKey(file));
+
+        try {
+            String key = resolveKey(file);
+            if (key != null && !key.isBlank()) storageService.deleteFile(key);
+        } catch (Exception e) {
+            System.out.println("MinIO delete failed, ignoring: " + file.getFileName());
+        }
+
         fileRepository.delete(file);
         systemEventService.log(userEmail, "DELETE_FILE", "Deleted " + file.getFileName());
     }
@@ -138,9 +161,18 @@ public class FileService {
     public void deleteFileAsAdmin(Long fileId, String adminEmail) throws IOException {
         FileEntity file = fileRepository.findById(fileId)
                 .orElseThrow(() -> new RuntimeException("File not found"));
+
+        try { publicLinkRepository.deleteAll(publicLinkRepository.findByFileId(fileId)); } catch (Exception ignored) {}
         fileShareService.deleteSharesForFile(fileId);
         collaborationCommentRepository.deleteByFileId(fileId);
-        storageService.deleteFile(resolveKey(file));
+
+        try {
+            String key = resolveKey(file);
+            if (key != null && !key.isBlank()) storageService.deleteFile(key);
+        } catch (Exception e) {
+            System.out.println("Admin delete: MinIO file missing, ignoring: " + file.getFileName());
+        }
+
         fileRepository.delete(file);
         systemEventService.log(adminEmail, "ADMIN_DELETE_FILE", "Admin deleted " + file.getFileName());
         systemEventService.notifyAdmins("File Deleted by Admin", adminEmail + " deleted " + file.getFileName());
@@ -189,13 +221,13 @@ public class FileService {
     // ── Content read/write ──
     public byte[] getFileContent(Long fileId, String userEmail) throws IOException {
         FileEntity file = getFileIfAccessible(fileId, userEmail);
-        return storageService.readFile(resolveKey(file));
+        return storageService.getFileBytes(resolveKey(file));
     }
 
     public byte[] getPublicFileContent(Long fileId) throws IOException {
         FileEntity file = fileRepository.findById(fileId)
                 .orElseThrow(() -> new RuntimeException("File not found"));
-        return storageService.readFile(resolveKey(file));
+        return storageService.getFileBytes(resolveKey(file));
     }
 
     public void replaceFileContent(Long fileId, String userEmail, byte[] content, String contentType) throws IOException {
@@ -203,7 +235,7 @@ public class FileService {
         boolean isOwner = file.getOwnerEmail().equals(userEmail);
         boolean canEdit = fileShareService.canEditFile(fileId, userEmail);
         if (!isOwner && !canEdit) throw new RuntimeException("No edit permission");
-        storageService.writeFile(resolveKey(file), content);
+        storageService.replaceFile(resolveKey(file), content, contentType);
         file.setSize((long) content.length);
         file.setLastModifiedAt(LocalDateTime.now());
         fileRepository.save(file);
@@ -244,14 +276,29 @@ public class FileService {
     }
 
     @Transactional
-    public void emptyTrash(String userEmail) throws IOException {
+    public void emptyTrash(String userEmail) {
         List<FileEntity> trashed = getTrash(userEmail);
+
         for (FileEntity file : trashed) {
-            fileShareService.deleteSharesForFile(file.getId());
-            collaborationCommentRepository.deleteByFileId(file.getId());
-            storageService.deleteFile(resolveKey(file));
+            // Clean up all related records first (foreign key safety)
+            try { publicLinkRepository.deleteAll(publicLinkRepository.findByFileId(file.getId())); } catch (Exception ignored) {}
+            try { fileShareService.deleteSharesForFile(file.getId()); } catch (Exception ignored) {}
+            try { collaborationCommentRepository.deleteByFileId(file.getId()); } catch (Exception ignored) {}
+
+            // Try to delete from MinIO — skip if not found
+            try {
+                String key = resolveKey(file);
+                if (key != null && !key.isBlank()) {
+                    storageService.deleteFile(key);
+                }
+            } catch (Exception e) {
+                System.out.println("MinIO delete skipped for: " + file.getFileName() + " — " + e.getMessage());
+            }
+
+            // Always remove from DB
             fileRepository.delete(file);
         }
+
         systemEventService.log(userEmail, "EMPTY_TRASH", "Emptied trash (" + trashed.size() + " files)");
     }
 
@@ -265,10 +312,25 @@ public class FileService {
         systemEventService.log(userEmail, "RENAME_FILE", "Renamed to " + newName);
     }
 
+    private String formatSize(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
+        if (bytes < 1024 * 1024 * 1024) return String.format("%.1f MB", bytes / (1024.0 * 1024));
+        return String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024));
+    }
+
     // ── Helpers ──
     private String resolveKey(FileEntity file) {
-        return (file.getStorageKey() != null && !file.getStorageKey().isBlank())
-                ? file.getStorageKey() : file.getFileName();
+        if (file.getStorageKey() != null && !file.getStorageKey().isBlank()) {
+            return file.getStorageKey();
+        }
+
+// fallback → try fileUrl
+        if (file.getFileUrl() != null && file.getFileUrl().contains("/")) {
+            return file.getFileUrl().substring(file.getFileUrl().lastIndexOf("/") + 1);
+        }
+
+        throw new RuntimeException("Storage key missing for file: " + file.getFileName());
     }
 
     private int compareUploadDates(FileEntity a, FileEntity b) {

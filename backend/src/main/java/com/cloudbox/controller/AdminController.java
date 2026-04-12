@@ -6,6 +6,7 @@ import com.cloudbox.dto.FileShareDTO;
 import com.cloudbox.model.*;
 import com.cloudbox.service.AdminService;
 import com.cloudbox.service.FileService;
+import com.cloudbox.service.PaymentService;
 import com.cloudbox.repository.UserRepository;
 import com.cloudbox.repository.FileRepository;
 
@@ -25,16 +26,19 @@ public class AdminController {
     private final UserRepository userRepository;
     private final FileService fileService;
     private final FileRepository fileRepository;
+    private final PaymentService paymentService;
 
     public AdminController(
             AdminService adminService,
             UserRepository userRepository,
             FileService fileService,
-            FileRepository fileRepository) {
+            FileRepository fileRepository,
+            PaymentService paymentService) {
         this.adminService = adminService;
         this.userRepository = userRepository;
         this.fileService = fileService;
         this.fileRepository = fileRepository;
+        this.paymentService = paymentService;
     }
 
     // ================= USERS =================
@@ -167,5 +171,29 @@ public class AdminController {
         Long storageLimitMb = payload.getStorageLimitMb();
         User updated = adminService.updateUserStorageLimit(id, storageLimitMb, auth.getName());
         return ResponseEntity.ok(updated);
+    }
+
+    // ================= PAYMENTS =================
+
+    @GetMapping("/payments")
+    public ResponseEntity<List<Payment>> getAllPayments() {
+        return ResponseEntity.ok(paymentService.getAllPayments());
+    }
+
+    @GetMapping("/payments/pending")
+    public ResponseEntity<List<Payment>> getPendingPayments() {
+        return ResponseEntity.ok(paymentService.getPendingPayments());
+    }
+
+    @PutMapping("/payments/{id}/approve")
+    public ResponseEntity<String> approvePayment(@PathVariable Long id, Authentication auth) {
+        paymentService.approvePayment(id, auth.getName());
+        return ResponseEntity.ok("Payment approved and plan activated");
+    }
+
+    @PutMapping("/payments/{id}/reject")
+    public ResponseEntity<String> rejectPayment(@PathVariable Long id, Authentication auth) {
+        paymentService.rejectPayment(id, auth.getName());
+        return ResponseEntity.ok("Payment rejected");
     }
 }

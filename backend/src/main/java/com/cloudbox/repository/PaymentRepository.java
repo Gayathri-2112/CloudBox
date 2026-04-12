@@ -8,4 +8,6 @@ import java.util.Optional;
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
     Optional<Payment> findByRazorpayOrderId(String orderId);
     List<Payment> findByUserEmailOrderByCreatedAtDesc(String email);
+    List<Payment> findByStatusOrderByCreatedAtDesc(String status);
+    List<Payment> findAllByOrderByCreatedAtDesc();
 }

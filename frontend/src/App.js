@@ -31,6 +31,7 @@ import AdminFileSharingControl from "./pages/admin/AdminFileSharingControl";
 import CollaborationActivity from "./pages/admin/CollaborationActivity";
 import AdminNotifications from "./pages/admin/AdminNotifications";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminPayments from "./pages/admin/AdminPayments";
 
 // 🧪 Testing pages
 import Kanban from "./pages/Kanban";
@@ -248,6 +249,15 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["ADMIN"]}>
                 <AdminSettings />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/payments"
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN"]}>
+                <AdminPayments />
               </ProtectedRoute>
             }
           />

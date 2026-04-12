@@ -72,6 +72,9 @@ export default function MyFiles() {
   const [linkModal,    setLinkModal]    = useState(null);
   const [linkPerm,     setLinkPerm]     = useState("VIEW");
   const [linkExpiry,   setLinkExpiry]   = useState("");
+  const [linkEmailTo,  setLinkEmailTo]  = useState("");
+  const [linkEmailPerm, setLinkEmailPerm] = useState("VIEW");
+  const [linkEmailSending, setLinkEmailSending] = useState(false);
   const [shareModal,   setShareModal]   = useState(null);
   const [shareEmails,  setShareEmails]  = useState("");
   const [sharePerm,    setSharePerm]    = useState("");
@@ -155,23 +158,78 @@ export default function MyFiles() {
     } catch (e) { toast.error(e.response?.data || "Failed"); }
   };
 
-  const viewFile = async (file) => {
-    const isDocx = /\.(doc|docx)$/i.test(file.fileName);
-    if (isDocx) {
-      try {
-        const r = await API.get(`/files/preview/${file.id}`, { responseType: "arraybuffer" });
-        setDocxEditMode(false); setDocxEditText("");
-        setViewer({ type: "docx", name: file.fileName, fileId: file.id, arrayBuffer: r.data });
-      } catch { toast.error("Failed to open document"); }
-      return;
-    }
-    try {
-      const url = getDirectFileUrl(file);
-      if (!url) throw new Error("No URL");
-      setViewer({ url, type: file.fileType || "application/octet-stream", name: file.fileName });
-    } catch { toast.error("Failed to open file"); }
-  };
+const downloadFile = async (file) => {
+  try {
+    const res = await API.get(`/files/download/${file.id}`, {
+      responseType: "blob"
+    });
 
+    const blob = new Blob([res.data], {
+      type: res.headers["content-type"]
+    });
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = file.fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+
+  } catch (err) {
+    toast.error("Download failed");
+  }
+};
+
+  const viewFile = async (file) => {
+  const isDocx = /\.(doc|docx)$/i.test(file.fileName);
+
+  if (isDocx) {
+    try {
+      const r = await API.get(`/files/preview/${file.id}`, {
+        responseType: "arraybuffer"
+      });
+
+      setDocxEditMode(false);
+      setDocxEditText("");
+
+      setViewer({
+        type: "docx",
+        name: file.fileName,
+        fileId: file.id,
+        arrayBuffer: r.data
+      });
+    } catch {
+      toast.error("Failed to open document");
+    }
+    return;
+  }
+
+  try {
+    const res = await API.get(`/files/preview/${file.id}`, {
+      responseType: "blob"
+    });
+
+    const blob = new Blob([res.data], {
+      type: res.headers["content-type"]
+    });
+
+    const url = URL.createObjectURL(blob);
+
+    setViewer({
+      url,
+      type: res.headers["content-type"], // ✅ REAL TYPE
+      name: file.fileName,
+      blobUrl: true
+    });
+
+  } catch (err) {
+    toast.error("Failed to open file");
+  }
+};
   const startDocxEdit = async () => {
     if (!viewer?.fileId) return;
     if (docxEditText) { setDocxEditMode(true); return; }
@@ -218,8 +276,8 @@ export default function MyFiles() {
   });
 
   const openLinkModal = async (file) => {
-    try { const r = await API.get(`/public/links/${file.id}`); setLinkModal({ fileId: file.id, fileName: file.fileName, links: r.data }); }
-    catch { setLinkModal({ fileId: file.id, fileName: file.fileName, links: [] }); }
+    try { const r = await API.get(`/public/links/${file.id}`); setLinkModal({ fileId: file.id, fileName: file.fileName, links: r.data, isDocx: /\.(doc|docx)$/i.test(file.fileName) }); }
+    catch { setLinkModal({ fileId: file.id, fileName: file.fileName, links: [], isDocx: /\.(doc|docx)$/i.test(file.fileName) }); }
     setLinkPerm("VIEW"); setLinkExpiry("");
   };
   const createLink = async () => {
@@ -235,7 +293,33 @@ export default function MyFiles() {
     try { await API.delete(`/public/link/${token}`); setLinkModal(p => ({...p, links: p.links.filter(l => l.token !== token)})); toast.success("Revoked"); }
     catch { toast.error("Failed"); }
   };
+  const updateLinkPermission = async (token, newPerm) => {
+    try {
+      await API.put(`/public/link/${token}/permission`, { permission: newPerm });
+      setLinkModal(p => ({...p, links: p.links.map(l => l.token === token ? {...l, permission: newPerm} : l)}));
+      toast.success("Permission updated");
+    } catch (e) { toast.error(e.response?.data || "Failed"); }
+  };
+
   const copyLink = (token) => { navigator.clipboard.writeText(`${window.location.origin}/shared/${token}`); toast.success("Copied"); };
+
+  const sendLinkByEmail = async () => {
+    if (!linkEmailTo.trim()) { toast.warning("Enter an email address"); return; }
+    setLinkEmailSending(true);
+    try {
+      await API.post(`/public/link/email`, {
+        fileId: linkModal.fileId,
+        email: linkEmailTo.trim(),
+        permission: linkEmailPerm,
+      });
+      toast.success(`Link sent to ${linkEmailTo.trim()}`);
+      setLinkEmailTo("");
+      // refresh link list
+      const r = await API.get(`/public/links/${linkModal.fileId}`);
+      setLinkModal(p => ({...p, links: r.data}));
+    } catch (e) { toast.error(e.response?.data || "Failed to send email"); }
+    finally { setLinkEmailSending(false); }
+  };
 
   return (
     <Layout type="user">
@@ -313,7 +397,7 @@ export default function MyFiles() {
                     <button className="mf-btn mf-btn-view" onClick={() => viewFile(file)}>
                       <i className="fa-solid fa-eye"></i> View
                     </button>
-                    <button className="mf-btn mf-btn-dl" onClick={() => triggerDownload(getDirectFileUrl(file), file.fileName)}>
+                    <button className="mf-btn mf-btn-dl" onClick={() => downloadFile(file)}>
                       <i className="fa-solid fa-download"></i>
                     </button>
                     <button className="mf-btn mf-btn-share" onClick={() => setShareModal(file)}>
@@ -361,7 +445,8 @@ export default function MyFiles() {
               </div>
               <div className="link-create-row">
                 <input className="inline-input" style={{flex:1}} placeholder="Recipient emails (comma separated)"
-                  value={shareEmails} onChange={e => setShareEmails(e.target.value)} />
+                  value={shareEmails} onChange={e => setShareEmails(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && shareFile(shareModal.id)} />
                 <select className="inline-select" value={sharePerm} onChange={e => setSharePerm(e.target.value)}>
                   <option value="" disabled>Permission</option>
                   <option value="VIEW">View</option>
@@ -421,9 +506,23 @@ export default function MyFiles() {
                 </>
               )}
               {viewer.type?.startsWith("image/") && <img src={viewer.url} alt="preview" className="viewer-media" />}
-              {viewer.type === "application/pdf" && <iframe src={viewer.url} className="viewer-frame" title={viewer.name} />}
+              {viewer.type?.includes("pdf") && <iframe src={viewer.url} className="viewer-frame" title={viewer.name} />}
               {viewer.type?.startsWith("video/") && <video controls className="viewer-media"><source src={viewer.url} type={viewer.type} /></video>}
               {viewer.type?.startsWith("audio/") && <audio controls style={{width:"100%",marginTop:20}}><source src={viewer.url} type={viewer.type} /></audio>}
+              {viewer.type?.startsWith("text/") && (
+                <iframe src={viewer.url} className="viewer-frame" title={viewer.name} style={{background:"#fff"}} />
+              )}
+              {viewer.url && !viewer.type?.startsWith("image/") && !viewer.type?.includes("pdf") &&
+               !viewer.type?.startsWith("video/") && !viewer.type?.startsWith("audio/") &&
+               !viewer.type?.startsWith("text/") && (
+                <div style={{textAlign:"center",padding:"40px 20px",color:"#9baabf"}}>
+                  <i className="fa-solid fa-file" style={{fontSize:48,marginBottom:16,display:"block"}}></i>
+                  <p style={{marginBottom:16}}>Preview not available for this file type.</p>
+                  <a href={viewer.url} download={viewer.name} className="btn btn-primary btn-sm">
+                    <i className="fa-solid fa-download"></i> Download to view
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -440,6 +539,7 @@ export default function MyFiles() {
                 <select className="inline-select" value={linkPerm} onChange={e => setLinkPerm(e.target.value)}>
                   <option value="VIEW">View only</option>
                   <option value="DOWNLOAD">View + Download</option>
+                  {linkModal.isDocx && <option value="EDIT">View + Edit</option>}
                 </select>
                 <select className="inline-select" value={linkExpiry} onChange={e => setLinkExpiry(e.target.value)}>
                   <option value="">No expiry</option>
@@ -456,7 +556,16 @@ export default function MyFiles() {
                     {linkModal.links.map(link => (
                       <div key={link.token} className="link-item">
                         <div className="link-item-info">
-                          <span className={`share-perm-badge perm-${link.permission?.toLowerCase()}`}>{link.permission}</span>
+                          <select
+                            className="inline-select"
+                            style={{fontSize:11,padding:"2px 6px"}}
+                            value={link.permission}
+                            onChange={e => updateLinkPermission(link.token, e.target.value)}
+                          >
+                            <option value="VIEW">VIEW</option>
+                            <option value="DOWNLOAD">DOWNLOAD</option>
+                            {linkModal.isDocx && <option value="EDIT">EDIT</option>}
+                          </select>
                           <span className="link-url">{`${window.location.origin}/shared/${link.token}`}</span>
                           {link.expiresAt && <span className="link-expiry">Expires {new Date(link.expiresAt).toLocaleDateString()}</span>}
                         </div>
@@ -468,6 +577,22 @@ export default function MyFiles() {
                     ))}
                   </div>
               }
+              <div className="link-email-row">
+                <div className="link-email-label"><i className="fa-solid fa-envelope" style={{marginRight:6}}></i>Share via email</div>
+                <div className="link-create-row" style={{marginTop:6}}>
+                  <input className="inline-input" style={{flex:1}} type="email" placeholder="Recipient email"
+                    value={linkEmailTo} onChange={e => setLinkEmailTo(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && sendLinkByEmail()} />
+                  <select className="inline-select" value={linkEmailPerm} onChange={e => setLinkEmailPerm(e.target.value)}>
+                    <option value="VIEW">View only</option>
+                    <option value="DOWNLOAD">View + Download</option>
+                    {linkModal.isDocx && <option value="EDIT">View + Edit</option>}
+                  </select>
+                  <button className="btn btn-primary btn-sm" disabled={linkEmailSending} onClick={sendLinkByEmail}>
+                    {linkEmailSending ? <i className="fa-solid fa-spinner fa-spin"></i> : <><i className="fa-solid fa-paper-plane"></i> Send</>}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
