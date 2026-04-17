@@ -3,6 +3,7 @@ import API from "../api/axiosConfig";
 import Layout from "../components/layout/Layout";
 import Toast from "../components/common/Toast";
 import { useToast } from "../hooks/useToast";
+import { getRequestErrorMessage } from "../utils/requestErrors";
 import "../styles/style.css";
 
 function Notifications() {
@@ -14,8 +15,8 @@ function Notifications() {
     try {
       const res = await API.get("/user/notifications");
       setNotifications(res.data);
-    } catch {
-      toast.error("Failed to load notifications");
+    } catch (error) {
+      toast.error(getRequestErrorMessage(error, "Failed to load notifications"));
     } finally {
       setLoading(false);
     }
@@ -28,8 +29,8 @@ function Notifications() {
       await API.put("/user/notifications/read-all");
       fetchNotifications();
       toast.success("All marked as read");
-    } catch {
-      toast.error("Failed to update notifications");
+    } catch (error) {
+      toast.error(getRequestErrorMessage(error, "Failed to update notifications"));
     }
   };
 

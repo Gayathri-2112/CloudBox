@@ -1,5 +1,7 @@
 package com.cloudbox.security;
 
+import com.cloudbox.model.User;
+import com.cloudbox.repository.UserRepository;
 import com.cloudbox.util.JwtUtil;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.*;
@@ -19,6 +21,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -41,6 +46,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
                 // ✅ Extract email
                 String email = jwtUtil.extractEmail(token);
+
+                User user = userRepository.findByEmail(email).orElse(null);
+
+                if (user == null) {
+                    SecurityContextHolder.clearContext();
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+                if (user.isSuspended()) {
+                    SecurityContextHolder.clearContext();
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("text/plain;charset=UTF-8");
+                    response.getWriter().write("Account suspended by admin");
+                    return;
+                }
 
                 // ✅ Extract all claims
                 Claims claims = jwtUtil.extractAllClaims(token);

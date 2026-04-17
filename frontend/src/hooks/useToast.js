@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 
 let idCounter = 0;
 
@@ -14,12 +14,15 @@ export function useToast() {
     setMessages((prev) => prev.filter((m) => m.id !== id));
   }, []);
 
-  const toast = {
-    success: (text) => addToast(text, "success"),
-    error: (text) => addToast(text, "error"),
-    info: (text) => addToast(text, "info"),
-    warning: (text) => addToast(text, "warning"),
-  };
+  const success = useCallback((text) => addToast(text, "success"), [addToast]);
+  const error = useCallback((text) => addToast(text, "error"), [addToast]);
+  const info = useCallback((text) => addToast(text, "info"), [addToast]);
+  const warning = useCallback((text) => addToast(text, "warning"), [addToast]);
+
+  const toast = useMemo(
+    () => ({ success, error, info, warning }),
+    [success, error, info, warning]
+  );
 
   return { messages, removeToast, toast };
 }

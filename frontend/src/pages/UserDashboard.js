@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Layout from "../components/layout/Layout";
 import ChatWidget from "../components/ChatWidget";
 import { getSessionUser } from "../services/sessionService";
+import { getRequestErrorMessage } from "../utils/requestErrors";
 import "../styles/style.css";
 import "../styles/UserDashboard.css";
 
@@ -45,9 +46,11 @@ export default function UserDashboard() {
   const [storageLimit, setStorageLimit] = useState(15360);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const fetchData = () => {
     setLoading(true);
+    setLoadError("");
     Promise.all([
       API.get("/files"),
       API.get("/user/notifications"),
@@ -57,7 +60,9 @@ export default function UserDashboard() {
       setNotifications((nRes.data || []).slice(0, 4));
       setTotalSize(Number(sRes.data.usedBytes) || 0);
       setStorageLimit(Number(sRes.data.limitMb) || 15360);
-    }).catch(console.error)
+    }).catch((error) => {
+      setLoadError(getRequestErrorMessage(error, "Failed to load dashboard data"));
+    })
       .finally(() => setLoading(false));
   };
 
@@ -156,7 +161,8 @@ export default function UserDashboard() {
                 <span><i className="fa-solid fa-clock-rotate-left" /> Recent Files</span>
                 <button className="ud-panel-link" onClick={() => navigate("/files")}>View all →</button>
               </div>
-              {recentFiles.length === 0
+              {loadError && <div className="ud-empty"><i className="fa-solid fa-triangle-exclamation" /><p>{loadError}</p></div>}
+              {!loadError && recentFiles.length === 0
                 ? <div className="ud-empty"><i className="fa-solid fa-folder-open" /><p>No files yet</p></div>
                 : recentFiles.map(f => {
                   const meta = getFileIcon(f.fileName);
@@ -184,7 +190,7 @@ export default function UserDashboard() {
                 </span>
                 <button className="ud-panel-link" onClick={() => navigate("/notifications")}>View all →</button>
               </div>
-              {notifications.length === 0
+              {!loadError && notifications.length === 0
                 ? <div className="ud-empty"><i className="fa-solid fa-bell-slash" /><p>No notifications</p></div>
                 : notifications.map(n => (
                   <div key={n.id} className={`ud-notif-row${n.read ? "" : " ud-notif-unread"}`} onClick={() => navigate("/notifications")}>

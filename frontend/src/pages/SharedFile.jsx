@@ -1,11 +1,10 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { renderAsync } from "docx-preview";
-import axios from "axios";
+import API from "../api/axiosConfig";
+import { getRequestErrorMessage, isBackendUnavailableError } from "../utils/requestErrors";
 import "../styles/style.css";
 import "../styles/SharedFile.css";
-
-const BASE = "http://localhost:8080/api";
 
 export default function SharedFile() {
   const { token } = useParams();
@@ -22,9 +21,15 @@ export default function SharedFile() {
 
   // 1. Fetch file info
   useEffect(() => {
-    axios.get(`${BASE}/public/info/${token}`)
+    API.get(`/public/info/${token}`)
       .then(res => { setInfo(res.data); })
-      .catch(() => setError("This link is invalid or has expired."))
+      .catch((err) => {
+        setError(
+          isBackendUnavailableError(err)
+            ? getRequestErrorMessage(err, "Unable to load this shared file right now.")
+            : "This link is invalid or has expired."
+        );
+      })
       .finally(() => setLoading(false));
   }, [token]);
 
@@ -39,13 +44,13 @@ export default function SharedFile() {
       info.fileType?.startsWith("text/");
 
     if (isDocx) {
-      axios.get(`${BASE}/public/file/${token}`, { responseType: "arraybuffer" })
+      API.get(`/public/file/${token}`, { responseType: "arraybuffer" })
         .then(res => setDocxBuffer(res.data))
         .catch(() => { });
       return;
     }
     if (isMedia) {
-      axios.get(`${BASE}/public/file/${token}`, { responseType: "blob" })
+      API.get(`/public/file/${token}`, { responseType: "blob" })
         .then(res => setPreviewUrl(URL.createObjectURL(new Blob([res.data], { type: info.fileType }))))
         .catch(() => { });
     }
@@ -61,35 +66,35 @@ export default function SharedFile() {
 
   async function download() {
     try {
-      const res = await axios.get(`${BASE}/public/file/${token}`, { responseType: "blob" });
+      const res = await API.get(`/public/file/${token}`, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement("a");
       a.href = url; a.download = info.fileName; a.click();
       URL.revokeObjectURL(url);
-    } catch { alert("Download failed"); }
+    } catch (error) { alert(getRequestErrorMessage(error, "Download failed")); }
   }
 
   async function loadEditText() {
     try {
-      await axios.get(`${BASE}/public/file/${token}`, { responseType: "arraybuffer" });
+      await API.get(`/public/file/${token}`, { responseType: "arraybuffer" });
       // Extract text via a simple approach — send to backend
-      const r2 = await axios.post(`${BASE}/public/docx-text/${token}`, null);
+      const r2 = await API.post(`/public/docx-text/${token}`, null);
       setEditText(r2.data.text || "");
       setEditMode(true);
-    } catch { alert("Failed to load text for editing"); }
+    } catch (error) { alert(getRequestErrorMessage(error, "Failed to load text for editing")); }
   }
 
   async function saveEdit() {
     setSaving(true); setSaveMsg("");
     try {
-      await axios.put(`${BASE}/public/docx-save/${token}`, { text: editText });
+      await API.put(`/public/docx-save/${token}`, { text: editText });
       // Reload preview
-      const res = await axios.get(`${BASE}/public/file/${token}`, { responseType: "arraybuffer" });
+      const res = await API.get(`/public/file/${token}`, { responseType: "arraybuffer" });
       setDocxBuffer(res.data);
       setEditMode(false);
       setSaveMsg("Saved!");
       setTimeout(() => setSaveMsg(""), 3000);
-    } catch { setSaveMsg("Save failed"); }
+    } catch (error) { setSaveMsg(getRequestErrorMessage(error, "Save failed")); }
     finally { setSaving(false); }
   }
 

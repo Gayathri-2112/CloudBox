@@ -1,9 +1,10 @@
 import { useState } from "react";
-import axios from "axios";
+import API from "../api/axiosConfig";
 import { useNavigate, Link } from "react-router-dom";
 import Toast from "../components/common/Toast";
 import { useToast } from "../hooks/useToast";
 import CloudBoxLogo from "../components/CloudBoxLogo";
+import { getRequestErrorMessage } from "../utils/requestErrors";
 import "../styles/login.css";
 
 function ResetPassword() {
@@ -20,11 +21,11 @@ function ResetPassword() {
     }
     setLoading(true);
     try {
-      await axios.post("http://localhost:8080/api/auth/reset-password", { email, newPassword });
+      await API.post("/auth/reset-password", { email, newPassword });
       toast.success("Password updated successfully");
       setTimeout(() => navigate("/login"), 1500);
     } catch (err) {
-      toast.error(err.response?.data || "Reset failed");
+      toast.error(getRequestErrorMessage(err, "Reset failed"));
     } finally {
       setLoading(false);
     }

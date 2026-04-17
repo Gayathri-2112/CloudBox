@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import API from "../api/axiosConfig";
-import axios from "axios";
+import { getRequestErrorMessage } from "../utils/requestErrors";
 import "./ChatWidget.css";
-
-const BASE = "http://localhost:8080/api";
 
 export default function ChatWidget({ mode = "landing" }) {
   const [open, setOpen] = useState(false);
@@ -32,15 +30,24 @@ export default function ChatWidget({ mode = "landing" }) {
     try {
       let reply;
       if (mode === "landing") {
-        const res = await axios.post(`${BASE}/chat/landing`, { message: text });
+        const res = await API.post("/chat/landing", { message: text });
         reply = res.data.reply;
       } else {
         const res = await API.post("/chat/dashboard", { message: text });
         reply = res.data.reply;
       }
       setMessages(p => [...p, { role: "bot", text: reply }]);
-    } catch {
-      setMessages(p => [...p, { role: "bot", text: "Sorry, I couldn't process that. Please try again in a moment." }]);
+    } catch (error) {
+      setMessages((p) => [
+        ...p,
+        {
+          role: "bot",
+          text: getRequestErrorMessage(
+            error,
+            "Sorry, I couldn't process that. Please try again in a moment."
+          ),
+        },
+      ]);
     } finally {
       setLoading(false);
     }

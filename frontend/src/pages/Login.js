@@ -8,6 +8,7 @@ import {
   getDashboardRouteForRole,
   getValidatedSession,
 } from "../services/sessionService";
+import { getRequestErrorMessage, isBackendUnavailableError } from "../utils/requestErrors";
 import "../styles/login.css";
 
 function Login() {
@@ -45,7 +46,7 @@ function Login() {
       localStorage.setItem("name", email.split("@")[0]);
       navigate(getDashboardRouteForRole(user.role), { replace: true });
     } catch (err) {
-      const msg = err.response?.data || "";
+      const msg = typeof err.response?.data === "string" ? err.response.data : "";
 
       if (msg.startsWith("ATTEMPTS_LEFT:")) {
         const left = parseInt(msg.split(":")[1], 10);
@@ -58,8 +59,11 @@ function Login() {
         setLocked(true);
         setAttemptsLeft(0);
       } else {
-        // wrong email / suspended / other
-        toast.error(msg || "Invalid credentials");
+        toast.error(
+          isBackendUnavailableError(err)
+            ? getRequestErrorMessage(err, "Unable to reach the backend")
+            : msg || "Invalid credentials"
+        );
       }
     } finally {
       setLoading(false);

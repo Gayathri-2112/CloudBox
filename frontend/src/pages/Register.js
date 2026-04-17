@@ -5,6 +5,7 @@ import Toast from "../components/common/Toast";
 import { useToast } from "../hooks/useToast";
 import CloudBoxLogo from "../components/CloudBoxLogo";
 import { getValidatedSession } from "../services/sessionService";
+import { getRequestErrorMessage } from "../utils/requestErrors";
 import "../styles/login.css";
 
 function getPasswordStrength(password) {
@@ -60,7 +61,7 @@ function Register() {
       toast.success("Registration successful! Redirecting...");
       setTimeout(() => navigate("/login"), 1500);
     } catch (error) {
-      toast.error("Registration failed");
+      toast.error(getRequestErrorMessage(error, "Registration failed"));
     } finally {
       setLoading(false);
     }

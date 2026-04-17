@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import API from "../api/axiosConfig";
 import Layout from "../components/layout/Layout";
+import { getRequestErrorMessage } from "../utils/requestErrors";
 import "../styles/StorageUsed.css";
 
 /* ── helpers ── */
@@ -72,16 +73,20 @@ export default function StorageUsed() {
   const [limitMb, setLimitMb] = useState(15360);
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const fetchData = () => {
     setLoading(true);
+    setLoadError("");
     Promise.all([API.get("/user/storage"), API.get("/files")])
       .then(([s, f]) => {
         setUsedBytes(Number(s.data.usedBytes) || 0);
         setLimitMb(Number(s.data.limitMb) || 15360);
         setFiles(Array.isArray(f.data) ? f.data : []);
       })
-      .catch(console.error)
+      .catch((error) => {
+        setLoadError(getRequestErrorMessage(error, "Failed to load storage data"));
+      })
       .finally(() => setLoading(false));
   };
 
@@ -195,7 +200,9 @@ export default function StorageUsed() {
               <i className="fa-solid fa-chart-pie su-panel-icon" />
               <span>Storage by Category</span>
             </div>
-            {categories.length === 0
+            {loadError
+              ? <p className="su-empty">{loadError}</p>
+              : categories.length === 0
               ? <p className="su-empty">No files uploaded yet.</p>
               : categories.map(({ name, bytes, pct }) => {
                 const m = CAT[name] || CAT.Other;

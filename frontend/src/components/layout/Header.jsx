@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useSearch } from "../../context/SearchContext";
 import API from "../../api/axiosConfig";
 import { getSessionUser } from "../../services/sessionService";
+import { useBackendStatus } from "../../hooks/useBackendStatus";
 import "./layout.css";
 
 function Header({ onMenuToggle, sidebarOpen }) {
@@ -13,11 +14,13 @@ function Header({ onMenuToggle, sidebarOpen }) {
   const name = sessionUser?.name || "User";
   const { query, setQuery } = useSearch();
   const [unread, setUnread] = useState(0);
+  const { reachable } = useBackendStatus();
 
   // poll unread count every 30s
   useEffect(() => {
     const fetchUnread = async () => {
       try {
+        if (!reachable) return;
         // only user role has unread-count endpoint
         if (role === "ADMIN") return;
         const res = await API.get("/user/notifications/unread-count");
@@ -26,9 +29,10 @@ function Header({ onMenuToggle, sidebarOpen }) {
     };
 
     fetchUnread();
+    if (!reachable) return undefined;
     const interval = setInterval(fetchUnread, 30000);
     return () => clearInterval(interval);
-  }, [role]);
+  }, [role, reachable]);
 
   const handleSearchKey = (e) => {
     if (e.key === "Enter" && query.trim()) navigate("/files");

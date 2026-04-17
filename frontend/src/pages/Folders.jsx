@@ -4,6 +4,7 @@ import API from "../api/axiosConfig";
 import Layout from "../components/layout/Layout";
 import Toast from "../components/common/Toast";
 import { useToast } from "../hooks/useToast";
+import { getRequestErrorMessage } from "../utils/requestErrors";
 import "../styles/folders.css";
 import "../styles/style.css";
 
@@ -24,7 +25,7 @@ function Folders() {
     try {
       const res = await API.get("/files/folders");
       setFolders(res.data);
-    } catch { toast.error("Failed to load folders"); }
+    } catch (error) { toast.error(getRequestErrorMessage(error, "Failed to load folders")); }
   }, [toast]);
 
   useEffect(() => { fetchFolders(); }, [fetchFolders]);
@@ -37,7 +38,7 @@ function Folders() {
       const res = await API.get("/files");
       const filtered = res.data.filter(f => (f.folder || "root") === name);
       setFolderFiles(prev => ({ ...prev, [name]: filtered }));
-    } catch { toast.error("Failed to load files"); }
+    } catch (error) { toast.error(getRequestErrorMessage(error, "Failed to load files")); }
   };
 
   const createFolder = async () => {
@@ -50,7 +51,7 @@ function Folders() {
       toast.success(`Folder "${name}" created`);
       fetchFolders();
     } catch (err) {
-      toast.error(err.response?.data || "Failed to create folder");
+      toast.error(getRequestErrorMessage(err, "Failed to create folder"));
     } finally { setCreating(false); }
   };
 
@@ -64,7 +65,7 @@ function Folders() {
       setRenameName("");
       setFolderFiles({});
       fetchFolders();
-    } catch (err) { toast.error(err.response?.data || "Rename failed"); }
+    } catch (err) { toast.error(getRequestErrorMessage(err, "Rename failed")); }
   };
 
   const deleteFolder = async () => {
@@ -74,7 +75,7 @@ function Folders() {
       setConfirmDelete(null);
       setFolderFiles({});
       fetchFolders();
-    } catch (err) { toast.error(err.response?.data || "Delete failed"); }
+    } catch (err) { toast.error(getRequestErrorMessage(err, "Delete failed")); }
   };
 
   const getFileIcon = (fileName) => {

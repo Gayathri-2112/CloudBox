@@ -44,6 +44,7 @@ import SharedFile from "./pages/SharedFile";
 import Plans from "./pages/Plans";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import { SearchProvider } from "./context/SearchContext";
+import BackendStatusBanner from "./components/BackendStatusBanner";
 
 import "./index.css";
 import "@fortawesome/fontawesome-free/css/all.min.css";
@@ -52,6 +53,7 @@ function App() {
   return (
     <SearchProvider>
       <BrowserRouter>
+        <BackendStatusBanner />
         <Routes>
 
           {/* ================= PUBLIC ================= */}

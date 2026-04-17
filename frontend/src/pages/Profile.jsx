@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api/axiosConfig";
 import Layout from "../components/layout/Layout";
@@ -6,6 +6,7 @@ import Toast from "../components/common/Toast";
 import { useToast } from "../hooks/useToast";
 import { logoutUser } from "../services/authService";
 import { getSessionUser } from "../services/sessionService";
+import { getRequestErrorMessage } from "../utils/requestErrors";
 import "../styles/style.css";
 import "../styles/Profile.css";
 
@@ -22,14 +23,16 @@ function Profile() {
   const role = sessionUser?.role || "USER";
   const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
 
-  useEffect(() => { fetchProfile(); }, []);
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       const res = await API.get("/user/profile");
       setUser(res.data);
-    } catch (err) { console.error(err); }
-  };
+    } catch (err) {
+      toast.error(getRequestErrorMessage(err, "Failed to load profile"));
+    }
+  }, [toast]);
+
+  useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
   const handleChange = (e) => setUser({ ...user, [e.target.name]: e.target.value });
 
@@ -38,8 +41,8 @@ function Profile() {
       await API.put("/user/profile", user);
       toast.success("Profile updated!");
       setEdit(false);
-    } catch {
-      toast.error("Update failed");
+    } catch (error) {
+      toast.error(getRequestErrorMessage(error, "Update failed"));
     }
   };
 
@@ -55,7 +58,7 @@ function Profile() {
       logoutUser();
       navigate("/login");
     } catch (e) {
-      toast.error(e.response?.data || "Failed to delete account");
+      toast.error(getRequestErrorMessage(e, "Failed to delete account"));
       setDeleting(false);
       setConfirmDelete(false);
     }
