@@ -11,7 +11,7 @@ const PROVIDERS = [
         key: "MINIO",
         name: "MinIO",
         icon: "fa-solid fa-server",
-        color: "#6366f1",
+        color: "#cf163d",
         description: "Self-hosted S3-compatible storage",
         fields: [
             { key: "endpoint", label: "Endpoint", placeholder: "http://localhost:9000", type: "text", required: true, hint: "Include protocol and port. Example: http://localhost:9000" },
@@ -38,7 +38,7 @@ const PROVIDERS = [
         key: "AZURE_BLOB",
         name: "Azure Blob Storage",
         icon: "fab fa-microsoft",
-        color: "#0078d4",
+        color: "#007FFF",
         description: "Microsoft Azure Blob Storage",
         fields: [
             { key: "connectionString", label: "Connection string", placeholder: "DefaultEndpointsProtocol=...", type: "password", required: false, hint: "Recommended. If provided, account name/key below are optional." },
@@ -51,7 +51,7 @@ const PROVIDERS = [
         key: "GCS",
         name: "Google Cloud Storage",
         icon: "fab fa-google",
-        color: "#4285f4",
+        color: "#4285F4",
         description: "Google Cloud Platform Storage",
         fields: [
             { key: "projectId", label: "Project ID", placeholder: "my-project-123", type: "text", required: true },
@@ -63,7 +63,7 @@ const PROVIDERS = [
         key: "LOCAL",
         name: "Local Storage",
         icon: "fa-solid fa-folder",
-        color: "#6b7280",
+        color: "#161b22",
         description: "Local filesystem storage (fallback)",
         fields: [
             { key: "uploadDir", label: "Upload directory", placeholder: "uploads/", type: "text", required: true, hint: "Server-side path. Keep it within the backend project for safety." },
