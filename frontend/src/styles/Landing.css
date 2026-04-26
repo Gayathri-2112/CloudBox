@@ -1167,3 +1167,43 @@ body {
     font-size: 30px;
   }
 }
+
+/* Remove default button outlines in footer */
+.footer button,
+.footer-links button,
+.footer-bottom-links button,
+.social-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: #475569;
+  font-size: 13.5px;
+  outline: none;
+  text-align: left;
+}
+.footer-links button:hover,
+.footer-bottom-links button:hover {
+  color: #93c5fd;
+}
+.social-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #1e293b !important;
+  color: #94a3b8 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.social-btn:hover {
+  background: #2563eb !important;
+  color: #fff !important;
+}
+.price-amount {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1a2236;
+  margin: 4px 0;
+}

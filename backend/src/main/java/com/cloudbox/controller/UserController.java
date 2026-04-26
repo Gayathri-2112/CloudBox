@@ -71,6 +71,15 @@ public class UserController {
         return userService.cancelPlan(principal.getName());
     }
 
+    @GetMapping("/cancel-plan/eligibility")
+    public java.util.Map<String, Object> getCancelEligibility(Principal principal) {
+        long hoursRemaining = userService.getCancellationHoursRemaining(principal.getName());
+        return java.util.Map.of(
+            "canCancel", hoursRemaining > 0,
+            "hoursRemaining", Math.max(hoursRemaining, 0)
+        );
+    }
+
     @DeleteMapping("/account")
     public org.springframework.http.ResponseEntity<String> deleteAccount(Principal principal) {
         userService.deleteOwnAccount(principal.getName());

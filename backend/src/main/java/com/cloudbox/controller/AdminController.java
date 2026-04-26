@@ -174,6 +174,23 @@ public class AdminController {
         return ResponseEntity.ok(updated);
     }
 
+    // ================= PLAN MANAGEMENT =================
+
+    @GetMapping("/plans")
+    public ResponseEntity<List<com.cloudbox.model.PlanConfig>> getPlanConfigs() {
+        return ResponseEntity.ok(paymentService.getAllPlanConfigs());
+    }
+
+    @PutMapping("/plans/{plan}")
+    public ResponseEntity<com.cloudbox.model.PlanConfig> updatePlanConfig(
+            @PathVariable String plan,
+            @RequestBody Map<String, Object> body) {
+        com.cloudbox.model.Plan p = com.cloudbox.model.Plan.valueOf(plan.toUpperCase());
+        long pricePaise = Long.parseLong(body.get("pricePaise").toString());
+        long storageMb = Long.parseLong(body.get("storageMb").toString());
+        String description = body.getOrDefault("description", "").toString();
+        return ResponseEntity.ok(paymentService.updatePlanConfig(p, pricePaise, storageMb, description));
+    }
     // ================= PAYMENTS =================
 
     @GetMapping("/payments/summary")

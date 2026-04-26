@@ -137,10 +137,19 @@ public class UserService {
         if (user.getPlan() == null || user.getPlan().name().equals("FREE"))
             throw new RuntimeException("You are already on the FREE plan");
 
+        // Enforce 24-hour cancellation window
+        paymentRepository.findTopByUserEmailAndStatusOrderByPaidAtDesc(email, "APPROVED")
+                .ifPresent(payment -> {
+                    if (payment.getPaidAt() != null &&
+                        payment.getPaidAt().isBefore(java.time.LocalDateTime.now().minusHours(24))) {
+                        throw new RuntimeException("Cancellation window has expired. Plans can only be cancelled within 24 hours of payment approval.");
+                    }
+                });
+
         com.cloudbox.model.Plan cancelledPlan = user.getPlan();
 
         user.setPlan(com.cloudbox.model.Plan.FREE);
-        user.setStorageLimitMb(15360L); // reset to 15 GB
+        user.setStorageLimitMb(15360L);
         userRepository.save(user);
 
         // Record a REFUNDED payment entry for admin tracking
@@ -161,6 +170,18 @@ public class UserService {
 
         systemEventService.log(email, "CANCEL_PLAN", "Cancelled " + cancelledPlan + " plan, reverted to FREE");
         return mapToDTO(user);
+    }
+
+    // Returns hours remaining in cancellation window, or -1 if expired/no payment
+    public long getCancellationHoursRemaining(String email) {
+        return paymentRepository.findTopByUserEmailAndStatusOrderByPaidAtDesc(email, "APPROVED")
+                .map(payment -> {
+                    if (payment.getPaidAt() == null) return -1L;
+                    long hoursElapsed = java.time.Duration.between(payment.getPaidAt(), java.time.LocalDateTime.now()).toHours();
+                    long remaining = 24 - hoursElapsed;
+                    return remaining > 0 ? remaining : -1L;
+                })
+                .orElse(-1L);
     }
 
     @Transactional

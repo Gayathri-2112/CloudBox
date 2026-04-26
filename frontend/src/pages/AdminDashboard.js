@@ -185,8 +185,7 @@ function AdminDashboard() {
         </div>
 
       </Layout>
-      <ChatWidget mode="dashboard" />
-    </>
+      <ChatWidget mode="admin" />    </>
   );
 }
 

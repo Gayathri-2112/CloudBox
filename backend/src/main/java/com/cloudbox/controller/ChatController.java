@@ -38,4 +38,16 @@ public class ChatController {
         String reply = chatService.chatDashboard(message, auth.getName());
         return ResponseEntity.ok(Map.of("reply", reply));
     }
+
+    // Admin dashboard — requires ADMIN role, uses platform-wide stats
+    @PostMapping("/admin")
+    public ResponseEntity<Map<String, String>> adminChat(
+            @RequestBody Map<String, String> body,
+            Authentication auth) {
+        String message = body.getOrDefault("message", "").trim();
+        if (message.isEmpty())
+            return ResponseEntity.badRequest().body(Map.of("reply", "Please enter a message."));
+        String reply = chatService.chatAdmin(message);
+        return ResponseEntity.ok(Map.of("reply", reply));
+    }
 }

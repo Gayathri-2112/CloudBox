@@ -1,3 +1,4 @@
+import React from "react";
 import { Link } from "react-router-dom";
 import CloudBoxLogo from "./CloudBoxLogo";
 import { isSessionActive } from "../services/sessionService";
@@ -292,25 +293,43 @@ export function Testimonials() {
 }
 
 /* PRICING */
-const plans = [
-  {
-    name: "Free", storage: "15 GB", sub: "Forever free",
-    features: ["15 GB storage", "Up to 3 users", "Basic file sharing", "Email support"],
-    cta: "Get started", link: true,
-  },
-  {
-    name: "Pro", storage: "100 GB", sub: "Best for professionals",
-    features: ["100 GB storage", "Unlimited users", "Advanced sharing & permissions", "Collaboration & comments", "Priority support"],
-    cta: "Upgrade to Pro", link: true, featured: true,
-  },
-  {
-    name: "Enterprise", storage: "1 TB", sub: "For organizations",
-    features: ["1 TB storage", "Unlimited users", "Admin dashboard", "Full audit logs", "SSO & compliance", "Dedicated support"],
-    cta: "Contact sales", link: false,
-  },
-];
+const LANDING_PLAN_FEATURES = {
+  Free: ["15 GB storage", "Up to 3 users", "Basic file sharing", "Email support"],
+  Pro: ["100 GB storage", "Unlimited users", "Advanced sharing & permissions", "Collaboration & comments", "Priority support"],
+  Enterprise: ["1 TB storage", "Unlimited users", "Admin dashboard", "Full audit logs", "SSO & compliance", "Dedicated support"],
+};
 
 export function Pricing() {
+  const [configs, setConfigs] = React.useState([]);
+
+  React.useEffect(() => {
+    fetch("http://localhost:8080/api/payment/plans")
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setConfigs(data))
+      .catch(() => {});
+  }, []);
+
+  const getPrice = (planKey) => {
+    const c = configs.find(c => c.plan === planKey);
+    if (!c) return planKey === "PRO" ? "₹499" : planKey === "ENTERPRISE" ? "₹1,999" : "Free";
+    return c.pricePaise === 0 ? "Free" : "₹" + (c.pricePaise / 100).toLocaleString("en-IN");
+  };
+
+  const getStorage = (planKey) => {
+    const c = configs.find(c => c.plan === planKey);
+    if (!c) return planKey === "FREE" ? "15 GB" : planKey === "PRO" ? "100 GB" : "1 TB";
+    const mb = c.storageMb;
+    if (mb >= 1048576) return (mb / 1048576).toFixed(0) + " TB";
+    if (mb >= 1024) return (mb / 1024).toFixed(0) + " GB";
+    return mb + " MB";
+  };
+
+  const plans = [
+    { key: "FREE", name: "Free", sub: "Forever free", cta: "Get started", link: true },
+    { key: "PRO", name: "Pro", sub: "Best for professionals", cta: "Upgrade to Pro", link: true, featured: true },
+    { key: "ENTERPRISE", name: "Enterprise", sub: "For organizations", cta: "Contact sales", link: false },
+  ];
+
   return (
     <section className="pricing" id="pricing">
       <div className="section-label">Pricing</div>
@@ -321,11 +340,14 @@ export function Pricing() {
           <div className={`pricing-card${p.featured ? " featured" : ""}`} key={p.name}>
             {p.featured && <div className="pricing-badge">Most Popular</div>}
             <h3>{p.name}</h3>
-            <div className="price">{p.storage}</div>
+            <div className="price">{getStorage(p.key)}</div>
+            <div className="price-amount" style={{ color: p.featured ? "#fff" : "#1a2236" }}>
+              {getPrice(p.key)}{p.key !== "FREE" && <span style={{ fontSize: 13, fontWeight: 400, opacity: 0.7 }}>/mo</span>}
+            </div>
             <div className="price-sub">{p.sub}</div>
             <div className="pricing-divider" />
             <ul className="pricing-features">
-              {p.features.map((f) => <li key={f}>{f}</li>)}
+              {(LANDING_PLAN_FEATURES[p.name] || []).map((f) => <li key={f}>{f}</li>)}
             </ul>
             {p.link
               ? <Link to="/register"><button className="plan-btn">{p.cta}</button></Link>
