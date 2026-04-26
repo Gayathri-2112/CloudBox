@@ -32,6 +32,7 @@ import CollaborationActivity from "./pages/admin/CollaborationActivity";
 import AdminNotifications from "./pages/admin/AdminNotifications";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminPayments from "./pages/admin/AdminPayments";
+import AdminPlans from "./pages/admin/AdminPlans";
 
 // 🧪 Testing pages
 import Kanban from "./pages/Kanban";
@@ -263,6 +264,15 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["ADMIN"]}>
                 <AdminPayments />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/plans"
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN"]}>
+                <AdminPlans />
               </ProtectedRoute>
             }
           />

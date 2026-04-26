@@ -46,4 +46,10 @@ public class PaymentController {
     public ResponseEntity<List<Payment>> history(Authentication auth) {
         return ResponseEntity.ok(paymentService.getUserPayments(auth.getName()));
     }
+
+    // Public endpoint — no auth required, used by landing page
+    @GetMapping("/plans")
+    public ResponseEntity<List<com.cloudbox.model.PlanConfig>> getPublicPlans() {
+        return ResponseEntity.ok(paymentService.getAllPlanConfigs());
+    }
 }

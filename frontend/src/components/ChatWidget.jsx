@@ -10,6 +10,8 @@ export default function ChatWidget({ mode = "landing" }) {
       role: "bot",
       text: mode === "landing"
         ? "Hi! I'm the CloudBox Assistant 👋 Ask me anything about CloudBox — features, pricing, how to use it!"
+        : mode === "admin"
+        ? "Hi Admin! 👋 Ask me about users, payments, revenue, files, or plan configs."
         : "Hi! I'm your CloudBox Assistant 👋 Ask me about your files, storage usage, or anything about your account!",
     },
   ]);
@@ -23,29 +25,23 @@ export default function ChatWidget({ mode = "landing" }) {
 
   const send = async () => {
     const text = input.trim();
-    if (!text || loading) return;  // block if already loading
+    if (!text || loading) return;
     setInput("");
     setMessages(p => [...p, { role: "user", text }]);
     setLoading(true);
     try {
-      let reply;
-      if (mode === "landing") {
-        const res = await API.post("/chat/landing", { message: text });
-        reply = res.data.reply;
-      } else {
-        const res = await API.post("/chat/dashboard", { message: text });
-        reply = res.data.reply;
-      }
-      setMessages(p => [...p, { role: "bot", text: reply }]);
+      let endpoint = "/chat/landing";
+      if (mode === "dashboard") endpoint = "/chat/dashboard";
+      if (mode === "admin") endpoint = "/chat/admin";
+
+      const res = await API.post(endpoint, { message: text });
+      setMessages(p => [...p, { role: "bot", text: res.data.reply }]);
     } catch (error) {
       setMessages((p) => [
         ...p,
         {
           role: "bot",
-          text: getRequestErrorMessage(
-            error,
-            "Sorry, I couldn't process that. Please try again in a moment."
-          ),
+          text: getRequestErrorMessage(error, "Sorry, I couldn't process that. Please try again in a moment."),
         },
       ]);
     } finally {

@@ -184,6 +184,7 @@ public class FileShareService {
                 .toList();
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void revokeShareByOwner(Long shareId, String ownerEmail) {
         FileShare share = fileShareRepository.findById(shareId)
                 .orElseThrow(() -> new RuntimeException("Share record not found"));
@@ -192,24 +193,27 @@ public class FileShareService {
             throw new RuntimeException("Unauthorized");
         }
 
+        String sharedWith = share.getSharedWith();
+        String fileName = share.getFile() != null ? share.getFile().getFileName() : "unknown file";
+
         fileShareRepository.delete(share);
-        systemEventService.log(ownerEmail, "REVOKE_SHARE",
-                "Revoked access to " + share.getFile().getFileName() + " for " + share.getSharedWith());
-        systemEventService.notifyUser(
-                share.getSharedWith(),
-                "Share Revoked",
-                ownerEmail + " revoked your access to " + share.getFile().getFileName());
+        fileShareRepository.flush();
+        systemEventService.log(ownerEmail, "REVOKE_SHARE", "Revoked access to " + fileName + " for " + sharedWith);
+        systemEventService.notifyUser(sharedWith, "Share Revoked", ownerEmail + " revoked your access to " + fileName);
     }
+
+    @org.springframework.transaction.annotation.Transactional
 
     public void revokeShareAsAdmin(Long shareId, String adminEmail) {
         FileShare share = fileShareRepository.findById(shareId)
                 .orElseThrow(() -> new RuntimeException("Share record not found"));
 
-        String fileName = share.getFile().getFileName();
+        String fileName = share.getFile() != null ? share.getFile().getFileName() : "unknown file";
         String owner = share.getOwnerEmail();
         String sharedWith = share.getSharedWith();
 
         fileShareRepository.delete(share);
+        fileShareRepository.flush();
 
         systemEventService.log(adminEmail, "ADMIN_REVOKE_SHARE",
                 "Admin revoked access to " + fileName + " shared by " + owner + " with " + sharedWith);

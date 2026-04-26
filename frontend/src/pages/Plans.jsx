@@ -6,81 +6,65 @@ import { useToast } from "../hooks/useToast";
 import { getSessionUser } from "../services/sessionService";
 import "../styles/plans.css";
 
-const PLANS = [
-  {
-    key: "FREE",
-    name: "Free",
-    price: 0,
-    priceLabel: "₹0",
-    period: "forever",
-    storage: "15 GB",
-    storageBytes: 15 * 1024 * 1024 * 1024,
-    color: "#6b7280",
-    features: [
-      "15 GB storage",
-      "File sharing (View/Download/Edit)",
-      "Public link sharing",
-      "Collaboration & comments",
-      "Basic file management",
-    ],
-  },
-  {
-    key: "PRO",
-    name: "Pro",
-    price: 499,
-    priceLabel: "₹499",
-    period: "per month",
-    storage: "100 GB",
-    storageBytes: 100 * 1024 * 1024 * 1024,
-    color: "#4285f4",
-    featured: true,
-    features: [
-      "100 GB storage",
-      "Everything in Free",
-      "Priority support",
-      "Advanced sharing controls",
-      "Full activity audit logs",
-    ],
-  },
-  {
-    key: "ENTERPRISE",
-    name: "Enterprise",
-    price: 1999,
-    priceLabel: "₹1,999",
-    period: "per month",
-    storage: "1 TB",
-    storageBytes: 1024 * 1024 * 1024 * 1024,
-    color: "#8b5cf6",
-    features: [
-      "1 TB storage",
-      "Everything in Pro",
-      "Admin dashboard",
-      "User management",
-      "Dedicated support",
-      "Custom integrations",
-    ],
-  },
-];
+const PLAN_FEATURES = {
+  FREE: ["File sharing (View/Download/Edit)", "Public link sharing", "Collaboration & comments", "Basic file management"],
+  PRO: ["Everything in Free", "Priority support", "Advanced sharing controls", "Full activity audit logs"],
+  ENTERPRISE: ["Everything in Pro", "Admin dashboard", "User management", "Dedicated support", "Custom integrations"],
+};
+
+const PLAN_META = {
+  FREE: { name: "Free", color: "#6b7280", icon: "fa-cloud", featured: false },
+  PRO: { name: "Pro", color: "#4285f4", icon: "fa-bolt", featured: true },
+  ENTERPRISE: { name: "Enterprise", color: "#8b5cf6", icon: "fa-building", featured: false },
+};
+
+function formatStorage(mb) {
+  if (!mb) return "—";
+  if (mb >= 1048576) return (mb / 1048576).toFixed(0) + " TB";
+  if (mb >= 1024) return (mb / 1024).toFixed(0) + " GB";
+  return mb + " MB";
+}
 
 export default function Plans() {
   const { messages, removeToast, toast } = useToast();
+  const [planConfigs, setPlanConfigs] = useState([]);
+  const [plansLoading, setPlansLoading] = useState(true);
   const [currentPlan, setCurrentPlan] = useState("FREE");
   const [usedBytes, setUsedBytes] = useState(0);
   const [loading, setLoading] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelEligibility, setCancelEligibility] = useState({ canCancel: false, hoursRemaining: 0 });
   const sessionUser = getSessionUser();
   const userEmail = sessionUser?.email || "";
   const userName = sessionUser?.name || "User";
 
   useEffect(() => {
-    API.get("/user/storage").then(res => {
-      setUsedBytes(res.data.usedBytes || 0);
-    }).catch(() => { });
-    API.get("/user/profile").then(res => {
-      setCurrentPlan(res.data.plan || "FREE");
-    }).catch(() => { });
+    API.get("/user/storage").then(res => setUsedBytes(res.data.usedBytes || 0)).catch(() => {});
+    API.get("/user/profile").then(res => setCurrentPlan(res.data.plan || "FREE")).catch(() => {});
+    API.get("/user/cancel-plan/eligibility").then(res => setCancelEligibility(res.data)).catch(() => {});
+    API.get("/payment/plans").then(res => { setPlanConfigs(res.data); setPlansLoading(false); }).catch(() => setPlansLoading(false));
   }, []);
+
+  // Merge DB config with static metadata
+  const plans = ["FREE", "PRO", "ENTERPRISE"].map(key => {
+    const config = planConfigs.find(c => c.plan === key);
+    const meta = PLAN_META[key];
+    const priceRupees = config ? config.pricePaise / 100 : (key === "PRO" ? 499 : key === "ENTERPRISE" ? 1999 : 0);
+    const storageMb = config ? config.storageMb : (key === "FREE" ? 15360 : key === "PRO" ? 102400 : 1048576);
+    return {
+      key,
+      name: meta.name,
+      color: meta.color,
+      icon: meta.icon,
+      featured: meta.featured,
+      price: priceRupees,
+      priceLabel: priceRupees === 0 ? "₹0" : "₹" + priceRupees.toLocaleString("en-IN"),
+      storage: formatStorage(storageMb),
+      storageBytes: storageMb * 1024 * 1024,
+      features: PLAN_FEATURES[key] || [],
+    };
+  });
 
   const handleUpgrade = async (plan) => {
     if (plan.price === 0) return;
@@ -155,7 +139,7 @@ export default function Plans() {
     return b + " B";
   };
 
-  const currentPlanData = PLANS.find(p => p.key === currentPlan) || PLANS[0];
+  const currentPlanData = plans.find(p => p.key === currentPlan) || plans[0];
   const usedPct = Math.min((usedBytes / currentPlanData.storageBytes) * 100, 100);
 
   return (
@@ -174,13 +158,35 @@ export default function Plans() {
               {formatBytes(usedBytes)} used of {currentPlanData.storage}
             </div>
             {currentPlan !== "FREE" && (
-              <button
-                className="btn btn-danger btn-sm"
-                style={{ marginTop: 12, fontSize: 12 }}
-                onClick={() => setConfirmCancel(true)}
-              >
-                <i className="fa-solid fa-xmark" style={{ marginRight: 6 }}></i>Cancel Plan
-              </button>
+              <div style={{ marginTop: 12 }}>
+                {cancelEligibility.canCancel ? (
+                  <>
+                    <div style={{
+                      fontSize: 12, color: "#16a34a", background: "#dcfce7",
+                      borderRadius: 8, padding: "6px 12px", marginBottom: 8, display: "inline-block"
+                    }}>
+                      <i className="fa-solid fa-clock" style={{ marginRight: 6 }}></i>
+                      {cancelEligibility.hoursRemaining}h remaining to cancel
+                    </div>
+                    <br />
+                    <button
+                      className="btn btn-danger btn-sm"
+                      style={{ fontSize: 12 }}
+                      onClick={() => setConfirmCancel(true)}
+                    >
+                      <i className="fa-solid fa-xmark" style={{ marginRight: 6 }}></i>Cancel Plan
+                    </button>
+                  </>
+                ) : (
+                  <div style={{
+                    fontSize: 12, color: "#dc2626", background: "#fee2e2",
+                    borderRadius: 8, padding: "6px 12px", display: "inline-block"
+                  }}>
+                    <i className="fa-solid fa-lock" style={{ marginRight: 6 }}></i>
+                    Cancellation window expired (24h limit)
+                  </div>
+                )}
+              </div>
             )}
           </div>
           <div className="plan-usage-bar-wrap">
@@ -213,7 +219,9 @@ export default function Plans() {
 
         {/* Plan cards */}
         <div className="plans-grid">
-          {PLANS.map(plan => {
+          {plansLoading ? (
+            <div style={{ color: "#9baabf", padding: 24 }}>Loading plans…</div>
+          ) : plans.map(plan => {
             const isCurrent = plan.key === currentPlan;
             return (
               <div
@@ -230,7 +238,7 @@ export default function Plans() {
                 <div className="plan-name">{plan.name}</div>
                 <div className="plan-price">
                   <span className="plan-price-amount">{plan.priceLabel}</span>
-                  {plan.price > 0 && <span className="plan-price-period">/{plan.period}</span>}
+                  {plan.price > 0 && <span className="plan-price-period">/month</span>}
                 </div>
                 <div className="plan-storage-label">{plan.storage} storage</div>
 
